@@ -47,6 +47,11 @@ never means “passed.”
 - The isolated service check used an empty resource mount. A successful scientific task was
   therefore **not run and not claimed**. Containers, the named Redis volume, runtime directories,
   downloaded audit files, and staging files were removed afterward.
+- A new local clone with no hard-linked working-tree files checked out the release-preparation
+  commit with a clean status. Compose parsing passed, no forbidden state/credential file was
+  present, and the static example remained 81 lines with SHA-256
+  `098f96829d5de39ee5a30a0615c10139c0b437cd4ecb0466564473db8e58485d`.
+  This is a local source-integrity check, not a clone-from-GitHub result.
 - GitHub push, Google Drive mirror upload, GHCR push/digest, and clone-from-remote clean-room
   validation are **not run** because no repository URL/owner, selected software license, or
   authenticated publication target is available.

@@ -8,8 +8,8 @@
 - the Compose definition and unified Dockerfile;
 - the unified dependency lock file;
 - unit/API tests and lightweight fixtures;
-- minimal example inputs and one static output-format example;
-- a machine-readable resource manifest, downloader, and checker.
+- minimal and complete example inputs and one static output-format example;
+- a machine-readable resource manifest, deterministic bundle builder, downloader, and checker.
 
 ## Intentionally excluded
 
@@ -17,7 +17,8 @@
 - Redis state and local Docker volumes;
 - caches, bytecode, machine logs, and formal-run console logs;
 - machine-specific provenance containing personal absolute paths;
-- large GPS, NetInfer, PPI, and KG resources;
+- scientific resource payloads in Git history or the Docker image (they are a separate release
+  asset);
 - run-trained checkpoints and intermediate/final artifacts;
 - legacy comparison reports and large copied run reports.
 
@@ -39,11 +40,10 @@ decisions, status transitions, artifacts, and resource hashes. API and Workflow 
 SQLite database. A clean `.runtime/state` directory starts with no historical user tasks.
 
 Resource metadata in `resources/manifest.json` records audited filenames, relative paths, sizes,
-SHA-256 values, sources, versions, licenses, and redistribution decisions. Nine GPS files use
-pinned official URLs after byte-level verification against a named upstream commit. The NCBI,
-NetInfer, PPI, and transformed KG entries remain manual-only and `needs_review` where exact
-revision, derivation, or redistribution rights are unresolved. The manifest is not an acquisition
-license or a complete data citation.
+SHA-256 values, sources, versions, license notes, and redistribution decisions. The project owner
+confirmed the selected v0.1.0 bundle contents for redistribution. The complete bundle has its own
+size and SHA-256, while all 18 extracted files are checked again against their individual records.
+The manifest is not a complete data citation and does not replace upstream attribution.
 
 ## Determinism boundary
 

@@ -12,11 +12,12 @@ The following decisions are recorded:
 - public GitHub repository: `https://github.com/beiweiClover/smi2phen`;
 - project source license: MIT;
 - lower-case GHCR namespace: `ghcr.io/beiweiclover`;
-- the verified GPS files continue to use pinned official URLs unless a tested Google Drive mirror
-  is supplied.
+- complete resource distribution: GitHub Release asset
+  `smi2phen-resources-v0.1.0.tar.gz`;
+- the project owner confirmed that the selected 18-file resource snapshot may be redistributed.
 
-The MIT license covers the smi2phen source code only. It does not override third-party resource
-licenses or grant permission to redistribute manual-only resources.
+The MIT license covers the smi2phen source code only. Preserve the upstream source, version,
+license, and attribution notes recorded in `resources/manifest.json`.
 
 ## 1. Local preflight
 
@@ -26,57 +27,68 @@ From the project root:
 python -m pytest
 python -m compileall -q src scripts tests
 python -m ruff check .
+python scripts/build_resource_bundle.py --resource-root /path/to/audited/resources
 python scripts/download_resources.py --dry-run
 docker compose config
 git status --short
 ```
 
-Review `resources/manifest.json`. Do not upload any resource whose
-`redistribution_status` is `manual_only_needs_review`.
+## 2. Build and test the complete resource asset
 
-## 2. Optional Google Drive mirror for GPS
+Build the deterministic full archive:
 
-The runtime can already retrieve the nine GPS files from pinned, byte-verified official GitHub
-URLs. A Google Drive mirror is optional.
-
-If a mirror is required:
-
-1. Run `python scripts/download_resources.py`. It downloads the nine approved GPS files and reports
-   the other resources as manual.
-2. Upload only the GPS paths classified under
-   `release_audit.third_party_upstream_downloadable`. Preserve their relative folder structure.
-3. Include the Apache-2.0 license and attribution to `Bin-Chen-Lab/GPS`, commit
-   `c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98`.
-4. Set each Drive file to “Anyone with the link” and viewer-only.
-5. Record the Drive file ID, revision, and sharing link. For script downloads, use only a raw
-   download URL returned by Drive (for example, the file's `webContentLink`) that works without an
-   account. Do not assume that a manually constructed URL is a stable public API. Google documents
-   browser downloads through `webContentLink`; its `files.get?alt=media` API flow normally uses an
-   authorization token:
-   <https://developers.google.com/workspace/drive/api/guides/manage-downloads>.
-6. Replace that resource's `download_url` only after the anonymous URL returns the resource bytes,
-   not an HTML login/permission page, in a logged-out browser or clean shell. If no anonymous raw
-   URL is available, keep the pinned official GPS URL and document Drive as a manual mirror.
-7. Download into a new empty resource root and verify every file:
-
-   ```bash
-   python scripts/download_resources.py --resource-root .release-staging/drive-test
-   python scripts/check_resources.py --resource-root .release-staging/drive-test
-   ```
-
-The full checker will remain non-ready until the manual-only Core resources are supplied. A Drive
-HTML permission page will fail SHA-256 verification; do not treat it as a resource file.
-
-For each mirrored file, retain this record:
-
-```text
-resource_id | filename | size | sha256 | public URL | Drive revision | expected_relative_path
+```powershell
+$sourceResources = Read-Host "Absolute path to the audited resource root"
+python scripts/build_resource_bundle.py `
+  --resource-root $sourceResources `
+  --version v0.1.0
 ```
 
-Do not upload NCBI, NetInfer, PPI, or transformed KG files from the audited local snapshot until
-their exact provenance and redistribution rights are resolved.
+Expected upload files are created below the ignored `.release-staging/` directory:
 
-## 3. Configure the release identity
+```text
+smi2phen-resources-v0.1.0.tar.gz
+SHA256SUMS
+resource-bundle-metadata.json
+```
+
+Before uploading, confirm the archive metadata equals `resources/manifest.json` and test the exact
+archive through the public downloader code:
+
+```powershell
+$bundle = (Resolve-Path ".release-staging\smi2phen-resources-v0.1.0.tar.gz").Path
+$bundleUrl = ([Uri]$bundle).AbsoluteUri
+python scripts/download_resources.py `
+  --resource-root ".release-staging\download-test" `
+  --bundle-url $bundleUrl
+python scripts/check_resources.py `
+  --resource-root ".release-staging\download-test" `
+  --mode enhanced
+```
+
+Do not upload the unused `kg-base/kg.csv`, run artifacts, databases, caches, or the source
+`.docker-data` directory itself.
+
+## 3. Publish the GitHub Release resource asset
+
+1. Push the reviewed source commit to `main`.
+2. Open the repository's **Releases** page and choose **Draft a new release**.
+3. Create/select tag `v0.1.0` at the reviewed source commit.
+4. Set the title to `smi2phen v0.1.0`.
+5. Paste the prepared release notes from `docs/RELEASE_NOTES_v0.1.0.md`.
+6. Upload all three files from `.release-staging/`.
+7. Publish the release.
+8. In a logged-out browser, confirm the archive is downloadable from:
+
+   ```text
+   https://github.com/beiweiClover/smi2phen/releases/download/v0.1.0/smi2phen-resources-v0.1.0.tar.gz
+   ```
+
+9. In a new empty directory, run `python scripts/download_resources.py` and
+   `python scripts/check_resources.py --mode enhanced`. Record publication as successful only if
+   all 18 files verify.
+
+## 4. Configure the release identity
 
 Set the fixed image in `.env.example` and the Compose fallback to:
 
@@ -93,7 +105,7 @@ https://github.com/beiweiClover/smi2phen.git
 The default README command must use `v0.1.0`, not `latest`. `latest` may be maintained as a
 convenience alias.
 
-## 4. Push source and create the release tag
+## 5. Push source
 
 The GitHub initialization commit contains the MIT `LICENSE` and has been merged without overwriting
 either history. Confirm the configured remote, then push:
@@ -103,24 +115,17 @@ git remote -v
 git push -u origin main
 ```
 
-Create the tag only after the GHCR push and clean-room verification have passed:
-
-```bash
-git tag -a v0.1.0 -m "smi2phen v0.1.0"
-git push origin v0.1.0
-```
-
 If `origin` already exists, inspect it with `git remote -v` and use `git remote set-url origin ...`
 only after confirming the exact target. Never place a token in a remote URL.
 
-Record:
+The release tag is created through the GitHub Release workflow above. Record:
 
 ```bash
 git rev-parse HEAD
-git rev-parse v0.1.0
+git ls-remote origin refs/tags/v0.1.0
 ```
 
-## 5. Build and push the GHCR image
+## 6. Build and push the GHCR image
 
 Build from the tagged source tree. Do not add `.local-resources`, `.runtime`, `.env`, or staging
 files to the Docker context.
@@ -144,7 +149,7 @@ required by the owner's GHCR policy.
 Make the GHCR package public if anonymous `docker compose pull` is part of the release requirement.
 Record the repository-qualified digest returned by the registry inspection.
 
-## 6. Clean-room verification
+## 7. Clean-room verification
 
 Use a new empty directory and a new Compose project name. Do not copy local images, resources,
 caches, or volumes into it.
@@ -155,7 +160,7 @@ cd smi2phen-clean
 git checkout v0.1.0
 cp .env.example .env
 python scripts/download_resources.py
-python scripts/check_resources.py
+python scripts/check_resources.py --mode enhanced
 docker compose -p smi2phen-clean pull
 docker compose -p smi2phen-clean up -d
 docker compose -p smi2phen-clean ps

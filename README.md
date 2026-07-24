@@ -126,23 +126,24 @@ Run it only after the required resources and compute environment are ready.
 
 ## Scientific resources
 
-Large scientific resources are intentionally absent from this submission. Place them beneath an
-external root such as `.local-resources/` using the relative paths in
-[`resources/manifest.json`](resources/manifest.json). The downloader retrieves the nine exact GPS
-files that were byte-verified against a pinned, Apache-2.0 upstream commit, skips already verified
-files, and prints manual instructions for resources that are not approved for rehosting:
+Scientific resources are distributed as one complete, versioned GitHub Release asset instead of
+being committed to Git history or baked into the Docker image. The default command downloads the
+full Enhanced snapshot containing mapping, NetInfer, PPI, KG, and GPS resources:
 
 ```bash
 python scripts/download_resources.py
-python scripts/check_resources.py --resource-root .local-resources --mode core
-python scripts/check_resources.py --resource-root .local-resources --mode enhanced
+python scripts/check_resources.py --mode enhanced
 ```
 
-The manifest hashes describe the audited resource snapshot. NetInfer, PPI, the mutable NCBI file,
-and locally transformed PrimeKG-derived files remain manual because their exact revision,
-transformation provenance, or redistribution rights are unresolved. A non-zero downloader/checker
-exit is expected until every selected required resource is present and verified. See
-[docs/RESOURCES.md](docs/RESOURCES.md).
+The downloader verifies the archive SHA-256, safely extracts only manifest-declared files beneath
+`.local-resources/`, and verifies all 18 files individually. Correct existing files are skipped.
+The v0.1.0 archive is approximately 42.4 MiB to download and approximately 304 MiB after extraction.
+It does not contain the unused local `kg.csv`.
+
+The resource URL and exact archive/file hashes are in
+[`resources/manifest.json`](resources/manifest.json). The release asset must first be uploaded by
+the repository owner; an unavailable asset is reported as an error, never as a successful setup.
+See [docs/RESOURCES.md](docs/RESOURCES.md).
 
 ## Static example result
 
@@ -152,15 +153,18 @@ packaging work and is not wired into the Web UI. The accompanying
 [`README`](examples/demo_result/README.md) records its scope and checksum.
 
 Minimal synthetic/validation inputs are under [`examples/minimal_inputs/`](examples/minimal_inputs/).
-They demonstrate accepted file shapes; they do not validate a disease model or scientific result.
+The complete retained example input set is under
+[`examples/full_inputs/`](examples/full_inputs/). These inputs support reproduction and adaptation,
+but their inclusion does not establish that the static result was regenerated in this release.
 
 ## Reproduction boundary
 
-This repository contains code, configuration, contracts, tests, lightweight examples, and resource
-metadata. It does not contain historical databases, chat records, uploads, run workspaces, caches,
-machine logs, private provenance, large scientific resources, trained run artifacts, or a claim
-that the static demo was reproduced. Exact scientific reruns additionally depend on the verified
-resource snapshot, compatible hardware/software, and user-supplied inputs.
+This repository contains code, configuration, contracts, tests, minimal and complete example
+inputs, and resource metadata. It does not contain historical databases, chat records, uploads, run
+workspaces, caches, machine logs, private provenance, scientific resource payloads, trained run
+artifacts, or a claim that the static demo was reproduced. The scientific resource payload is a
+separately checksummed GitHub Release asset. Exact scientific reruns additionally depend on that
+verified snapshot, compatible hardware/software, and user-supplied inputs.
 
 See [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) and
 [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
@@ -199,5 +203,6 @@ and access date. Do not invent or infer a DOI.
 The smi2phen source code is released under the MIT License; see [`LICENSE`](LICENSE). This license
 does not override the separate licenses or redistribution restrictions of third-party scientific
 resources. Consult the per-resource fields in [`resources/manifest.json`](resources/manifest.json).
-The account-owner steps for GitHub, an optional Google Drive GPS mirror, GHCR, and clean-room
-verification are documented in [docs/PUBLISHING.md](docs/PUBLISHING.md).
+The account-owner steps for the GitHub source push, complete GitHub Release resource asset, GHCR
+image, and clean-room verification are documented in
+[docs/PUBLISHING.md](docs/PUBLISHING.md).

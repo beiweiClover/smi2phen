@@ -1,6 +1,36 @@
 {
-  "schema_version": "1.1",
-  "description": "External scientific resource snapshot audited for smi2phen. Only exact, license-reviewed upstream GPS files are configured for automatic download.",
+  "schema_version": "1.2",
+  "description": "Complete external scientific resource snapshot audited for smi2phen. The default downloader installs one versioned full bundle and then verifies every file independently.",
+  "resource_bundle": {
+    "bundle_id": "smi2phen-full-resources-v0.1.0",
+    "filename": "smi2phen-resources-v0.1.0.tar.gz",
+    "format": "tar.gz",
+    "size": 44452328,
+    "sha256": "646ae28bc4bd62f2d67abf7b193017a5dbe2b70648f4dedffaee9d2d8d85996a",
+    "download_url": "https://github.com/beiweiClover/smi2phen/releases/download/v0.1.0/smi2phen-resources-v0.1.0.tar.gz",
+    "release_tag": "v0.1.0",
+    "authorization_basis": "The project owner confirmed that the selected release-bundle files may be redistributed. Upstream source and license notes remain recorded per resource.",
+    "resource_ids": [
+      "gene_info_human",
+      "netinfer_drug_target_network",
+      "netinfer_drug_substructure_network",
+      "netinfer_supplementary_workbook",
+      "ppi_human_interactome",
+      "kg_node_table",
+      "kg_edge_table",
+      "kg_manifest",
+      "kg_base_drug_smiles",
+      "gps_model_definition",
+      "gps_model_hepg2_t0",
+      "gps_model_mcf7_t1",
+      "gps_model_pc3_t1",
+      "gps_model_vcap_t1",
+      "gps_features_hepg2_t0",
+      "gps_features_mcf7_t1",
+      "gps_features_pc3_t1",
+      "gps_features_vcap_t1"
+    ]
+  },
   "readiness_policy": {
     "core": "Default NetInfer target path plus gene mapping, PPI, and KG resources.",
     "enhanced": "Core resources plus the configured GPS models and feature tables."
@@ -24,7 +54,7 @@
       ],
       "status": "byte_verified_against_pinned_upstream_commit"
     },
-    "manual_only_needs_review": {
+    "project_owner_release_bundle": {
       "resource_ids": [
         "gene_info_human",
         "netinfer_drug_target_network",
@@ -36,7 +66,7 @@
         "kg_manifest",
         "kg_base_drug_smiles"
       ],
-      "status": "not_approved_for_rehosting"
+      "status": "owner_confirmed_for_the_v0.1.0_release_bundle; upload_pending"
     }
   },
   "resources": [
@@ -49,7 +79,7 @@
       "source": "https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/",
       "version": "audited snapshot; mutable upstream revision needs_review",
       "license": "NCBI data-use terms; needs_review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/",
@@ -68,7 +98,7 @@
       "source": "https://doi.org/10.1039/D1SC05613A",
       "version": "Chemical Science 2022 supplementary snapshot; exact file revision needs_review",
       "license": "article CC BY-NC 3.0; incorporated database and data rights need review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://pubs.rsc.org/en/content/articlehtml/2022/sc/d1sc05613a",
@@ -87,7 +117,7 @@
       "source": "https://doi.org/10.1039/D1SC05613A",
       "version": "Chemical Science 2022 supplementary snapshot; exact file revision needs_review",
       "license": "article CC BY-NC 3.0; incorporated database and data rights need review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://pubs.rsc.org/en/content/articlehtml/2022/sc/d1sc05613a",
@@ -106,7 +136,7 @@
       "source": "https://doi.org/10.1039/D1SC05613A",
       "version": "Chemical Science 2022 supplementary snapshot; exact file revision needs_review",
       "license": "article CC BY-NC 3.0; supplementary and incorporated data rights need review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://pubs.rsc.org/en/content/articlehtml/2022/sc/d1sc05613a",
@@ -125,7 +155,7 @@
       "source": "assembled InWeb_IM, IntAct, and PINA snapshot; exact assembly provenance needs_review",
       "version": "needs_review",
       "license": "mixed upstream terms; needs_review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": null,
@@ -144,7 +174,7 @@
       "source": "https://github.com/mims-harvard/PrimeKG",
       "version": "locally transformed PrimeKG-derived snapshot; transformation revision needs_review",
       "license": "PrimeKG code is MIT; dataset and component-source licenses are distinct and need review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://github.com/mims-harvard/PrimeKG",
@@ -163,7 +193,7 @@
       "source": "https://github.com/mims-harvard/PrimeKG",
       "version": "locally transformed PrimeKG-derived snapshot; transformation revision needs_review",
       "license": "PrimeKG code is MIT; dataset and component-source licenses are distinct and need review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://github.com/mims-harvard/PrimeKG",
@@ -182,7 +212,7 @@
       "source": "https://github.com/mims-harvard/PrimeKG",
       "version": "local transformation manifest; transformation revision needs_review",
       "license": "derived-data provenance and redistribution terms need review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://github.com/mims-harvard/PrimeKG",
@@ -201,7 +231,7 @@
       "source": "PrimeKG-derived local compound mapping; exact derivation provenance needs_review",
       "version": "needs_review",
       "license": "derived-data and component-source terms need review",
-      "redistribution_status": "manual_only_needs_review",
+      "redistribution_status": "owner_confirmed_release_bundle",
       "download_url": null,
       "manual_download": {
         "official_page": "https://github.com/mims-harvard/PrimeKG",

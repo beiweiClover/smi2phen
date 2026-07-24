@@ -7,16 +7,25 @@ import hashlib
 import json
 import os
 import shutil
-import sys
+import tarfile
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 MODES = ("core", "enhanced")
 DOWNLOADABLE_SCHEMES = {"http", "https", "file"}
+BUNDLE_FIELDS = {
+    "bundle_id",
+    "filename",
+    "format",
+    "size",
+    "sha256",
+    "download_url",
+    "resource_ids",
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -46,6 +55,25 @@ def load_manifest(path: Path) -> dict[str, Any]:
         ):
             if field not in item:
                 raise ValueError(f"resource at index {index} is missing field: {field}")
+    bundle = payload.get("resource_bundle")
+    if not isinstance(bundle, dict):
+        raise ValueError("manifest resource_bundle must be an object")
+    missing_bundle_fields = sorted(BUNDLE_FIELDS - bundle.keys())
+    if missing_bundle_fields:
+        raise ValueError(
+            "manifest resource_bundle is missing fields: "
+            + ", ".join(missing_bundle_fields)
+        )
+    if bundle["format"] != "tar.gz":
+        raise ValueError("manifest resource_bundle format must be tar.gz")
+    resource_ids = [str(item["resource_id"]) for item in resources]
+    if len(resource_ids) != len(set(resource_ids)):
+        raise ValueError("manifest contains duplicate resource_ids")
+    bundle_resource_ids = list(map(str, bundle["resource_ids"]))
+    if sorted(bundle_resource_ids) != sorted(resource_ids):
+        raise ValueError("resource_bundle resource_ids must match all manifest resources")
+    if len(bundle_resource_ids) != len(set(bundle_resource_ids)):
+        raise ValueError("resource_bundle contains duplicate resource_ids")
     return payload
 
 
@@ -138,6 +166,180 @@ def download_to_temporary(url: str, destination: Path, timeout: float) -> Path:
     return temporary
 
 
+def bundle_download_url(bundle: dict[str, Any]) -> str:
+    value = bundle.get("download_url")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("resource_bundle download_url must be a non-empty URL")
+    url = value.strip()
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme.lower() not in DOWNLOADABLE_SCHEMES:
+        raise ValueError(f"resource_bundle URL scheme is not supported: {parsed.scheme}")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("resource_bundle download URL must not contain credentials")
+    return url
+
+
+def verify_bundle_archive(path: Path, bundle: dict[str, Any]) -> tuple[bool, str]:
+    if not path.is_file():
+        return False, "missing"
+    actual_size = path.stat().st_size
+    expected_size = int(bundle["size"])
+    if actual_size != expected_size:
+        return False, f"size mismatch: expected {expected_size}, got {actual_size}"
+    actual_hash = sha256_file(path)
+    expected_hash = str(bundle["sha256"]).lower()
+    if actual_hash.lower() != expected_hash:
+        return False, f"SHA-256 mismatch: expected {expected_hash}, got {actual_hash}"
+    return True, "verified"
+
+
+def bundle_member_name(item: dict[str, Any]) -> str:
+    raw = str(item["expected_relative_path"])
+    relative = PurePosixPath(raw)
+    if (
+        not raw
+        or "\\" in raw
+        or relative.is_absolute()
+        or ".." in relative.parts
+        or ":" in relative.parts[0]
+    ):
+        raise ValueError(f"{item['resource_id']} has an unsafe bundle path: {raw}")
+    return relative.as_posix()
+
+
+def extract_verified_bundle(
+    archive_path: Path,
+    manifest: dict[str, Any],
+    staging_root: Path,
+) -> None:
+    expected = {
+        bundle_member_name(item): item
+        for item in manifest["resources"]
+        if str(item["resource_id"]) in manifest["resource_bundle"]["resource_ids"]
+    }
+    with tarfile.open(archive_path, mode="r:gz") as archive:
+        members = archive.getmembers()
+        names = [member.name for member in members]
+        if len(names) != len(set(names)):
+            raise ValueError("resource bundle contains duplicate member names")
+        if set(names) != set(expected):
+            missing = sorted(set(expected) - set(names))
+            extra = sorted(set(names) - set(expected))
+            raise ValueError(
+                f"resource bundle member set mismatch; missing={missing}, extra={extra}"
+            )
+        for member in members:
+            item = expected[member.name]
+            if not member.isfile():
+                raise ValueError(f"resource bundle member is not a regular file: {member.name}")
+            expected_size = int(item["size"])
+            if member.size != expected_size:
+                raise ValueError(
+                    f"resource bundle member size mismatch for {member.name}: "
+                    f"expected {expected_size}, got {member.size}"
+                )
+            destination = destination_for(staging_root, item)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            source = archive.extractfile(member)
+            if source is None:
+                raise ValueError(f"cannot read resource bundle member: {member.name}")
+            with source, destination.open("wb") as output:
+                shutil.copyfileobj(source, output, length=1024 * 1024)
+
+    for item in manifest["resources"]:
+        destination = destination_for(staging_root, item)
+        valid, detail = verify_file(destination, item)
+        if not valid:
+            raise ValueError(f"extracted {item['resource_id']} failed verification: {detail}")
+
+
+def install_staged_resources(
+    manifest: dict[str, Any],
+    staging_root: Path,
+    resource_root: Path,
+) -> None:
+    for item in manifest["resources"]:
+        source = destination_for(staging_root, item)
+        destination = destination_for(resource_root, item)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(source, destination)
+
+
+def verified_resource_count(manifest: dict[str, Any], resource_root: Path) -> int:
+    return sum(
+        verify_file(destination_for(resource_root, item), item)[0]
+        for item in manifest["resources"]
+    )
+
+
+def process_bundle(
+    manifest: dict[str, Any],
+    resource_root: Path,
+    *,
+    timeout: float,
+    dry_run: bool,
+    bundle_url_override: str | None = None,
+) -> tuple[str, str]:
+    bundle = dict(manifest["resource_bundle"])
+    if bundle_url_override is not None:
+        bundle["download_url"] = bundle_url_override
+    total = len(manifest["resources"])
+    verified_before = verified_resource_count(manifest, resource_root)
+    if verified_before == total:
+        return (
+            "verified",
+            f"SKIP {bundle['bundle_id']}: all {total}/{total} resources already verified",
+        )
+
+    url = bundle_download_url(bundle)
+    if dry_run:
+        return (
+            "available",
+            f"AVAILABLE {bundle['bundle_id']}: {url} "
+            f"({verified_before}/{total} resources already verified)",
+        )
+
+    root = resource_root.resolve(strict=False)
+    root.parent.mkdir(parents=True, exist_ok=True)
+    temporary_archive: Path | None = None
+    try:
+        temporary_archive = download_to_temporary(
+            url,
+            root.parent / str(bundle["filename"]),
+            timeout,
+        )
+        valid, detail = verify_bundle_archive(temporary_archive, bundle)
+        if not valid:
+            return (
+                "error",
+                f"ERROR {bundle['bundle_id']}: downloaded bundle {detail}; source={url}",
+            )
+        with tempfile.TemporaryDirectory(
+            prefix=".smi2phen-resource-extract-",
+            dir=root.parent,
+        ) as temporary_directory:
+            staging_root = Path(temporary_directory)
+            extract_verified_bundle(temporary_archive, manifest, staging_root)
+            install_staged_resources(manifest, staging_root, root)
+        verified_after = verified_resource_count(manifest, root)
+        if verified_after != total:
+            return (
+                "error",
+                f"ERROR {bundle['bundle_id']}: installation left only "
+                f"{verified_after}/{total} verified resources",
+            )
+        return (
+            "downloaded",
+            f"DOWNLOADED {bundle['bundle_id']}: installed and verified "
+            f"{verified_after}/{total} resources under {root}",
+        )
+    except (OSError, ValueError, tarfile.TarError, urllib.error.URLError) as exc:
+        return "error", f"ERROR {bundle['bundle_id']}: bundle installation failed: {exc}"
+    finally:
+        if temporary_archive is not None:
+            temporary_archive.unlink(missing_ok=True)
+
+
 def process_resource(
     item: dict[str, Any],
     resource_root: Path,
@@ -195,10 +397,19 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path(os.environ.get("SMI2PHEN_RESOURCE_DIR", ".local-resources")),
     )
-    parser.add_argument("--mode", choices=(*MODES, "all"), default="all")
+    parser.add_argument(
+        "--mode",
+        choices=("enhanced", "all"),
+        default="enhanced",
+        help="Compatibility option; the downloader always installs the complete resource bundle.",
+    )
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true", dest="as_json")
+    parser.add_argument(
+        "--bundle-url",
+        help="Override the manifest bundle URL for local release testing.",
+    )
     return parser
 
 
@@ -206,46 +417,32 @@ def main() -> int:
     args = build_parser().parse_args()
     try:
         manifest = load_manifest(args.manifest)
-        resources = selected_resources(manifest, args.mode)
-        results = []
-        for item in resources:
-            status, message = process_resource(
-                item,
-                args.resource_root,
-                timeout=args.timeout,
-                dry_run=args.dry_run,
-            )
-            results.append(
-                {
-                    "resource_id": str(item["resource_id"]),
-                    "required": bool(item["required"]),
-                    "status": status,
-                    "message": message,
-                }
-            )
+        status, message = process_bundle(
+            manifest,
+            args.resource_root,
+            timeout=args.timeout,
+            dry_run=args.dry_run,
+            bundle_url_override=args.bundle_url,
+        )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise SystemExit(f"resource download configuration error: {exc}") from None
 
     if args.as_json:
-        print(json.dumps({"mode": args.mode, "results": results}, ensure_ascii=False, indent=2))
-    else:
-        for result in results:
-            print(result["message"])
-
-    incomplete = [
-        result
-        for result in results
-        if result["required"] and result["status"] not in {"verified", "downloaded"}
-    ]
-    if incomplete:
-        if not args.as_json:
-            print(
-                "Required resources remain unavailable or unverified. "
-                "Follow the MANUAL/ERROR messages, then rerun this command.",
-                file=sys.stderr,
+        print(
+            json.dumps(
+                {
+                    "mode": "enhanced",
+                    "bundle_id": manifest["resource_bundle"]["bundle_id"],
+                    "status": status,
+                    "message": message,
+                },
+                ensure_ascii=False,
+                indent=2,
             )
-        return 1
-    return 0
+        )
+    else:
+        print(message)
+    return 0 if status in {"verified", "downloaded", "available"} else 1
 
 
 if __name__ == "__main__":

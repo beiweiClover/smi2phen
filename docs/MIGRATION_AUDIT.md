@@ -16,7 +16,9 @@ overwritten. This document intentionally does not record local absolute paths.
   runtime/upload/artifact files, and 44 locally copied resource files.
 - One report contained a machine-specific project path.
 
-Counts describe the source audit only; none of those state/resource categories was copied.
+Counts describe the source audit only. Runtime state was not copied. A subsequent owner-authorized
+release extension added the selected complete example input set and packages the audited scientific
+resources only as an ignored, separately checksummed GitHub Release asset.
 
 ## Included by whitelist
 
@@ -24,7 +26,8 @@ Counts describe the source audit only; none of those state/resource categories w
 - current workflow/component/disease configuration and contracts;
 - the unified Dockerfile, Compose definition, and unified dependency lock;
 - tests not tied to excluded formal/legacy reports, plus their lightweight fixtures;
-- input examples required by the API and a consolidated minimal-input directory;
+- input examples required by the API, a consolidated minimal-input directory, and the selected
+  complete example input set;
 - the reusable unified validation client;
 - rewritten method/reproducibility/API/resource documentation;
 - one checksum-verified static result example.
@@ -32,8 +35,8 @@ Counts describe the source audit only; none of those state/resource categories w
 ## Excluded
 
 - `.data/`, `.docker-data/`, tool caches, bytecode, SQLite files, Redis state;
-- chat history, uploads, run inputs, caches, artifacts, logs, and checkpoints;
-- local large research resources;
+- chat history, uploads, historical run-workspace inputs, caches, artifacts, logs, and checkpoints;
+- local large research resources from Git history and the Docker image;
 - generated egg metadata;
 - historical `Report/` content and formal/legacy comparison scripts/tests;
 - a provenance example containing machine-specific information;
@@ -47,7 +50,8 @@ Counts describe the source audit only; none of those state/resource categories w
 - Dockerfile dependency on an excluded historical report was removed;
 - runtime mounts changed to clean ignored directories;
 - component registry image name was aligned with Compose;
-- public-facing documentation, resource metadata/checks, and ignore rules were added.
+- public-facing documentation, resource metadata/checks, deterministic resource-bundle delivery,
+  and ignore rules were added.
 
 Scientific algorithms and the FastAPI–Redis–Worker–Workflow execution architecture were not
 restructured.

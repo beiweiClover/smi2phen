@@ -14,6 +14,7 @@ deepseekapi.txt
 .local-resources
 .release-staging
 .tmp-resource-audit-*
+examples/full_inputs
 runs
 state
 uploads

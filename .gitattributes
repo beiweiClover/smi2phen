@@ -27,3 +27,9 @@ Dockerfile* text eol=lf
 *.jpg binary
 *.jpeg binary
 *.pdf binary
+
+# Preserve audited example bytes across Windows and Unix clones.
+examples/full_inputs/*.csv binary
+examples/full_inputs/*.tsv binary
+examples/full_inputs/*.txt binary
+examples/demo_result/final_candidates_no_toxicity.tsv binary

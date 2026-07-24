@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import tarfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +33,33 @@ def _record(payload: bytes, download_url: str | None) -> dict[str, object]:
         "required_for": ["core", "enhanced"],
         "module": "test",
     }
+
+
+def _bundle_manifest(
+    record: dict[str, object],
+    archive: Path,
+    *,
+    sha256: str | None = None,
+) -> dict[str, object]:
+    return {
+        "resources": [record],
+        "resource_bundle": {
+            "bundle_id": "fixture-bundle",
+            "filename": archive.name,
+            "format": "tar.gz",
+            "size": archive.stat().st_size,
+            "sha256": sha256 or hashlib.sha256(archive.read_bytes()).hexdigest(),
+            "download_url": archive.as_uri(),
+            "resource_ids": [record["resource_id"]],
+        },
+    }
+
+
+def _write_bundle(archive: Path, member_name: str, payload: bytes) -> None:
+    source = archive.parent / "bundle-source.bin"
+    source.write_bytes(payload)
+    with tarfile.open(archive, "w:gz") as handle:
+        handle.add(source, arcname=member_name)
 
 
 def test_downloads_and_then_skips_verified_file(tmp_path: Path) -> None:
@@ -102,3 +130,75 @@ def test_destination_cannot_escape_resource_root(tmp_path: Path) -> None:
         assert "escapes" in str(exc)
     else:
         raise AssertionError("unsafe destination was accepted")
+
+
+def test_full_bundle_downloads_installs_and_then_skips(tmp_path: Path) -> None:
+    module = _module()
+    payload = b"complete audited fixture\n"
+    archive = tmp_path / "resources.tar.gz"
+    _write_bundle(archive, "module/fixture.bin", payload)
+    record = _record(payload, None)
+    manifest = _bundle_manifest(record, archive)
+    resource_root = tmp_path / "installed"
+
+    status, message = module.process_bundle(
+        manifest,
+        resource_root,
+        timeout=5.0,
+        dry_run=False,
+    )
+
+    assert status == "downloaded"
+    assert "1/1" in message
+    assert (resource_root / "module" / "fixture.bin").read_bytes() == payload
+
+    status, message = module.process_bundle(
+        manifest,
+        resource_root,
+        timeout=5.0,
+        dry_run=False,
+    )
+    assert status == "verified"
+    assert "1/1" in message
+
+
+def test_full_bundle_rejects_archive_hash_mismatch(tmp_path: Path) -> None:
+    module = _module()
+    payload = b"expected fixture\n"
+    archive = tmp_path / "resources.tar.gz"
+    _write_bundle(archive, "module/fixture.bin", payload)
+    record = _record(payload, None)
+    manifest = _bundle_manifest(record, archive, sha256="0" * 64)
+    resource_root = tmp_path / "installed"
+
+    status, message = module.process_bundle(
+        manifest,
+        resource_root,
+        timeout=5.0,
+        dry_run=False,
+    )
+
+    assert status == "error"
+    assert "SHA-256 mismatch" in message
+    assert not (resource_root / "module" / "fixture.bin").exists()
+
+
+def test_full_bundle_rejects_unexpected_member_without_path_escape(tmp_path: Path) -> None:
+    module = _module()
+    payload = b"expected fixture\n"
+    archive = tmp_path / "resources.tar.gz"
+    _write_bundle(archive, "../escape.bin", payload)
+    record = _record(payload, None)
+    manifest = _bundle_manifest(record, archive)
+    resource_root = tmp_path / "installed"
+
+    status, message = module.process_bundle(
+        manifest,
+        resource_root,
+        timeout=5.0,
+        dry_run=False,
+    )
+
+    assert status == "error"
+    assert "member set mismatch" in message
+    assert not (tmp_path / "escape.bin").exists()

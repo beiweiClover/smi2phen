@@ -93,3 +93,43 @@ run. Hardware sufficiency for that full run therefore remains `needs_review`; no
 Enhanced scientific reproduction was attempted.
 
 The static demo result is excluded from scientific rerun claims.
+
+## Complete resource-bundle preparation — locally verified
+
+This section records the subsequent full-bundle delivery change. It supersedes the earlier
+GPS-only/manual acquisition method but does not rewrite the historical test record above.
+
+- Complete example inputs: **10 source files copied byte-for-byte** into
+  `examples/full_inputs/`; the two largest files are 38.81 MiB each.
+- Complete-input structure: **22,966 compounds** with unique/non-empty IDs and non-empty SMILES;
+  **117 disease-gene rows** with non-empty symbol/Entrez fields. Both expression metadata files
+  contain control and disease groups, and all 61/95 selected samples occur in their paired
+  216-column TPM headers, matching the implemented subset contract.
+- Git candidate audit: **205 files**, approximately **81.61 MiB** total, largest ordinary file
+  **38.81 MiB**, and **no ordinary file at or above 100 MiB**.
+- Candidate filename scan: **no** database, runtime state, upload, log, cache, private-key file,
+  real `.env`, or local-resource payload.
+- Candidate content scan: **no** recognized token shape, private-key block, Windows user-profile
+  path, local project absolute path, or email address detected. Scans report locations/types only,
+  never candidate secret values.
+- Full resource archive: deterministically built from the 18 manifest-declared files; unused local
+  `kg.csv` excluded.
+- Archive metadata: **44,452,328 bytes**, SHA-256
+  `646ae28bc4bd62f2d67abf7b193017a5dbe2b70648f4dedffaee9d2d8d85996a`;
+  extracted payload **318,937,454 bytes**.
+- Determinism check: rebuilding the archive produced the same size and SHA-256.
+- Empty-root installation test: the downloader consumed the exact local archive through a
+  `file://` URL, validated the archive, safely staged extraction, and verified **18/18 files**.
+  The checker reported both Core and Enhanced **READY**.
+- Downloader safety tests cover archive hash mismatch and unexpected/path-escaping members.
+- Full test suite: **229 passed, 10 skipped, 1 warning** on the host Python environment. The skips
+  retain the optional-dependency and Windows-symlink boundaries recorded above.
+- Python compilation: **passed** for `src`, `scripts`, and `tests`.
+- Ruff: **passed**.
+- `docker compose config --quiet`: **passed**.
+- Static demo remains **81 lines** with SHA-256
+  `098f96829d5de39ee5a30a0615c10139c0b437cd4ecb0466564473db8e58485d`.
+
+The archive is currently present only in ignored local `.release-staging/`. Upload to GitHub
+Releases, anonymous download from GitHub, a new GHCR push, and clean-room clone-from-remote
+validation are **not yet run** and must not be reported as passed.

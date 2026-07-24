@@ -1,0 +1,8 @@
+name: type 2 diabetes mellitus
+slug: type_2_diabetes
+identifier: MONDO:0005148
+custom_node_id: disease:custom:type_2_diabetes
+species: human
+tissue: pancreatic islet
+description: Small Stage 15 configuration-generalization fixture; not a validated disease model.
+source_tag: custom

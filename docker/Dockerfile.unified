@@ -1,0 +1,54 @@
+ARG UNIFIED_BASE_IMAGE=pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime@sha256:3387e598cb94fc248d82e712a65b10931a990cea3a2e76362ca30d135f565de4
+FROM ${UNIFIED_BASE_IMAGE}
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG PIP_VERSION=24.2
+ARG SETUPTOOLS_VERSION=72.1.0
+ARG WHEEL_VERSION=0.44.0
+ARG DGL_VERSION=2.4.0+cu121
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    DGLBACKEND=pytorch \
+    PYTHONPATH=/opt/smi2phen/src \
+    LIPID_AGENT_SERVICE=unified
+
+WORKDIR /opt/smi2phen
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates curl libgomp1 libglib2.0-0 \
+       libsm6 libxext6 libxrender1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --upgrade \
+       "pip==${PIP_VERSION}" "setuptools==${SETUPTOOLS_VERSION}" "wheel==${WHEEL_VERSION}"
+
+COPY environment-lock/requirements-unified.txt /tmp/requirements.txt
+RUN python -m pip install -r /tmp/requirements.txt \
+    && (python -c "import dgl; assert dgl.__version__.startswith('2.4.0')" \
+        || python -m pip install \
+       --find-links https://data.dgl.ai/wheels/torch-2.1/cu121/repo.html \
+       "dgl==${DGL_VERSION}")
+
+COPY pyproject.toml README.md compose.yaml ./
+COPY src ./src
+COPY configs ./configs
+COPY contracts ./contracts
+COPY environment-lock ./environment-lock
+COPY examples ./examples
+RUN python -m pip install --no-deps . \
+    && python -m compileall -q src \
+    && mkdir -p /resources/gps /resources/netinfer /resources/ppi /resources/kg-base /runs /state \
+    && python -c "import fastapi,torch,dgl,numpy,pandas,networkx,scipy,statsmodels,sklearn,skfp; from rdkit import Chem; assert torch.__version__.startswith('2.1.2'); assert dgl.__version__.startswith('2.4.0'); assert Chem.MolFromSmiles('CCO')"
+
+ARG LIPID_AGENT_SOURCE_DIGEST=unknown
+LABEL org.opencontainers.image.source.digest="${LIPID_AGENT_SOURCE_DIGEST}"
+ENV LIPID_AGENT_SOURCE_DIGEST=${LIPID_AGENT_SOURCE_DIGEST}
+
+EXPOSE 8000
+ENTRYPOINT []
+CMD ["python", "-m", "lipid_screening_agent.worker"]

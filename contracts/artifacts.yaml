@@ -1,0 +1,666 @@
+schema_version: "1.0"
+contract: workflow_artifacts
+path_semantics:
+  root: run_workspace
+  paths_must_be_relative: true
+  parent_traversal_allowed: false
+  fixed_resources_are_artifacts: false
+  legacy_generated_results_are_default_inputs: false
+  artifact_identity:
+    artifact_type: logical_key_declared_under_artifacts
+    artifact_id: deterministic_digest_derived_run_unique_instance_identifier
+    derived_from: [producer_node_id, producer_task_id, artifact_type, optional_instance_key]
+    generated_format: "a-{first_128_bits_of_sha256}"
+    value_pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    node_result_outputs_reference: artifact_id
+    input_artifact_ids_reference: artifact_id
+  execution_instance_templates:
+    node_id: canonical_workflow_node_id
+    task_id:
+      non_fan_out_value: main
+      fan_out_value: deterministic_from_item_key_and_value
+    value_pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+
+artifacts:
+  run_manifest:
+    path: run_manifest.json
+    media_type: application/json
+    producer: create_run_workspace
+    required: true
+    description: Frozen run ID, workflow/config versions, mode, disease, and provenance.
+    required_fields:
+      - run_id
+      - workflow_version
+      - config_hash
+      - evidence_mode
+      - disease
+      - created_at
+      - input_sources
+      - decisions
+    disease_required_fields:
+      - name
+      - slug
+      - identifier
+      - custom_node_id
+      - species
+      - tissue
+      - description
+
+  input_registration_manifest:
+    path: inputs/input_manifest.json
+    media_type: application/json
+    producer: register_inputs
+    required: true
+    shape:
+      top_level: object
+      records_field: inputs
+      records_type: list
+    required_fields:
+      - input_key
+      - role
+      - pair_id
+      - original_name
+      - registered_path
+      - size_bytes
+      - sha256
+      - registered_at
+      - source
+    input_key_values:
+      - compound_library
+      - disease_genes
+      - expression_pairs
+      - positive_drugs
+      - disease_links
+    expression_record_rules:
+      role_values: [tpm, metadata]
+      pair_id_required: true
+    non_expression_record_rules:
+      role_value: primary
+      pair_id: null
+    registered_path_semantics: relative_to_run_workspace
+    registration_behavior:
+      transfer: byte_for_byte_copy
+      destination: inputs/original/{original_name}
+      overwrite_existing_file: false
+      untrusted_filename_must_be_one_portable_segment: true
+
+  compounds_normalized:
+    path: inputs/prepared/compounds.normalized.csv
+    media_type: text/csv
+    producer: prepare_compound_library
+    required: true
+    required_columns:
+      ID: {type: string, unique: true, nullable: false}
+      SMILES: {type: string, nullable: false}
+    allowed_additional_columns: true
+
+  invalid_smiles:
+    path: inputs/prepared/invalid_smiles.tsv
+    media_type: text/tab-separated-values
+    producer: prepare_compound_library
+    required: true
+    may_be_empty: true
+    required_columns:
+      ID: {type: string}
+      SMILES: {type: string}
+      reason: {type: string}
+
+  disease_genes_normalized:
+    path: inputs/prepared/disease_genes.normalized.tsv
+    media_type: text/tab-separated-values
+    producer: prepare_disease_genes
+    required: true
+    required_columns:
+      symbol: {type: string, nullable: false}
+      entrez_id: {type: string, unique: true, nullable: false}
+    filename_semantics: generic_artifact_name_not_derived_from_disease_name
+
+  unmapped_genes:
+    path: inputs/prepared/unmapped_genes.tsv
+    media_type: text/tab-separated-values
+    producer: prepare_disease_genes
+    required: true
+    may_be_empty: true
+    required_columns:
+      input_value: {type: string}
+      reason: {type: string}
+
+  expression_comparisons_manifest:
+    path: inputs/prepared/expression_comparisons.json
+    media_type: application/json
+    producer: prepare_expression_inputs
+    required_when: enhanced_mode_and_expression_data_available
+    absence_behavior: no_artifact_when_prepare_expression_inputs_is_skipped
+    required_fields: [comparison_id, tpm_path, metadata_path, sample_counts, sha256]
+    shape:
+      top_level: object
+      schema_version: "1.0"
+      comparisons_field: comparisons
+      comparisons_type: list
+      item_required_fields: [comparison_id, tpm_path, metadata_path, sample_counts, sha256]
+    path_fields_are_relative_to_run_workspace: true
+
+  gps_drug_profiles:
+    path: artifacts/gps/Drug_GPS.csv.gz
+    media_type: application/gzip
+    producer: gps_predict_drug_profiles
+    required_in_modes: [enhanced]
+    matrix:
+      row_identifier: GeneSymbol
+      columns: compound_IDs
+      allowed_values: [-1, 0, 1]
+
+  gps_drug_profiles_entrez:
+    path: artifacts/gps/Drug_GPS.entrez.csv.gz
+    media_type: application/gzip
+    producer: gps_build_disease_signature
+    required_in_modes: [enhanced]
+    derived_from: gps_drug_profiles
+    mutation_policy: write_new_artifact_never_overwrite_source
+    matrix:
+      row_identifier: GeneID
+      columns: compound_IDs
+      allowed_values: [-1, 0, 1]
+
+  gps_disease_signature:
+    path: artifacts/gps/Disease_GPS.csv
+    media_type: text/csv
+    producer: gps_build_disease_signature
+    required_in_modes: [enhanced]
+    required_columns:
+      GeneID: {type: string, unique: true}
+      disease_log2FC_mean: {type: number}
+      disease_direction: {type: string, allowed_values: [up, down]}
+
+  gps_scores:
+    path: artifacts/gps/GPS_score.csv
+    media_type: text/csv
+    producer: gps_score_compounds
+    required_in_modes: [enhanced]
+    required_columns:
+      ID: {type: string, unique: true}
+      GPS_score_zRGES_like_lower_better: {type: number, direction: lower_is_better}
+
+  netinfer_input_mapping:
+    path: artifacts/netinfer/input_mapping.tsv
+    media_type: text/tab-separated-values
+    producer: netinfer_prepare_inputs
+    required: true
+    required_columns:
+      - ID
+      - SMILES
+      - match_key
+      - official_drug_id
+      - netinfer_input_type
+      - netinfer_input_id
+      - batch_id
+
+  netinfer_batch_manifest:
+    path: artifacts/netinfer/batch_manifest.json
+    media_type: application/json
+    producer: netinfer_prepare_inputs
+    required: true
+    required_fields: [schema_version, batch_size, novel_compound_count, batch_count, batches]
+    batch_item_required_fields:
+      - batch_id
+      - task_id
+      - compound_count
+      - compound_ids
+      - input_path
+      - input_sha256
+      - prediction_path
+
+  netinfer_target_map:
+    path: artifacts/netinfer/target_uniprot_to_symbol.tsv
+    media_type: text/tab-separated-values
+    producer: netinfer_prepare_inputs
+    required: true
+    required_columns: [uniprot_id, gene_symbol]
+
+  netinfer_batch_input:
+    path_template: artifacts/netinfer/batches/{batch_id}/CS.tsv
+    media_type: text/tab-separated-values
+    producer: netinfer_prepare_inputs
+    cardinality: zero_or_more
+    header: false
+    columns: [source_type, source_id, substructure_type, substructure_id, weight]
+    constants: {source_type: COMPOUND, substructure_type: SUB, weight: 1}
+
+  netinfer_known_predictions:
+    path: artifacts/netinfer/known_predictions.tsv
+    media_type: text/tab-separated-values
+    producer: netinfer_predict_known
+    required_when: known_drug_inputs_exist
+    header: false
+    columns: [source_type, source_id, target_type, uniprot_id, score, rank]
+    source_scope: complete_official_DRUG_network_filtered_by_mapping_during_merge
+
+  netinfer_batch_predictions:
+    path_template: artifacts/netinfer/batches/{batch_id}/predictions.tsv
+    media_type: text/tab-separated-values
+    producer: netinfer_predict_batch
+    cardinality: zero_or_more
+    required_one_per_manifest_batch: true
+    header: false
+    columns: [source_type, source_id, target_type, uniprot_id, score, rank]
+
+  drug_targets:
+    paths_by_producer:
+      netinfer_merge_targets: artifacts/netinfer/drug_targets.json
+      import_drug_targets: artifacts/targets/drug_targets.json
+    media_type: application/json
+    producers: [netinfer_merge_targets, import_drug_targets]
+    required: true
+    shape:
+      top_level: object_keyed_by_compound_ID
+      value_required_fields: [smiles, targets]
+      targets:
+        type: list
+        order: known_first_then_predicted_rank
+        predicted_rank_range: [1, 10]
+        known_targets_are_not_truncated: true
+        unique_by: gene_symbol
+        item_required_fields: [gene_symbol, evidence]
+        item_optional_fields: [uniprot_id, prediction_rank, score]
+        evidence_values: [known, predicted]
+
+  target_mapping:
+    path: artifacts/targets/target_mapping.tsv
+    media_type: text/tab-separated-values
+    producer: import_drug_targets
+    required: true
+    required_columns: [gene_symbol, entrez_id]
+
+  netinfer_missing_predictions:
+    path: artifacts/netinfer/missing_predictions.tsv
+    media_type: text/tab-separated-values
+    producer: netinfer_merge_targets
+    required: true
+    may_be_empty: true
+    required_columns: [ID, reason]
+
+  proximity_network_manifest:
+    path: artifacts/proximity/network_manifest.json
+    media_type: application/json
+    producer: proximity_prepare_network
+    required: true
+    required_fields:
+      - schema_version
+      - algorithm_version
+      - cache_format_version
+      - code_hash
+      - cache_key
+      - cache_key_inputs
+      - ppi_resource_sha256
+      - disease_genes_sha256
+      - target_mapping_sha256
+      - drug_targets_artifact_id
+      - lcc_node_count
+      - lcc_edge_count
+      - disease_node_count
+      - parameters
+      - files
+      - file_sha256
+
+  proximity_prepared_network:
+    path: artifacts/proximity/prepared_network.npz
+    media_type: application/x-npz
+    producer: proximity_prepare_network
+    required: true
+    required_arrays: [node_ids, edge_source_indices, edge_target_indices]
+
+  proximity_prepared_targets:
+    path: artifacts/proximity/prepared_drug_targets.tsv
+    media_type: text/tab-separated-values
+    producer: proximity_prepare_network
+    required: true
+    required_columns:
+      - ID
+      - target_records
+      - target_gene_symbols
+      - target_entrez_ids
+      - target_lcc_entrez_ids
+      - target_lcc_indices
+      - n_targets_raw
+      - n_targets_mapped
+      - n_targets_lcc
+    list_column_encoding: json_array
+
+  proximity_disease_distance_cache:
+    path_template: cache/proximity/disease_distance_cache_{cache_key}.npz
+    media_type: application/x-npz
+    producer: proximity_prepare_network
+    required: true
+    required_arrays: [node_ids, disease_node_ids, real_distances, random_distances]
+
+  proximity_skipped_compounds:
+    path: artifacts/proximity/skipped_compounds.tsv
+    media_type: text/tab-separated-values
+    producer: proximity_prepare_network
+    required: true
+    may_be_empty: true
+    required_columns: [ID, reason]
+
+  proximity_unmapped_targets:
+    path: artifacts/proximity/unmapped_targets.tsv
+    media_type: text/tab-separated-values
+    producer: proximity_prepare_network
+    required: true
+    may_be_empty: true
+    required_columns: [gene_symbol, reason, compound_ids]
+
+  proximity_scores:
+    path: artifacts/proximity/proximity_scores.csv
+    media_type: text/csv
+    producer: proximity_score_compounds
+    required: true
+    required_columns:
+      ID: {type: string, unique: true}
+      z: {type: number, direction: lower_is_better}
+
+  kg_nodes:
+    path: artifacts/kg/construction/node.csv
+    media_type: text/tab-separated-values
+    delimiter: tab
+    producer: kg_construct_graph
+    required: true
+    required_columns:
+      - node_index
+      - node_id
+      - node_type
+      - node_name
+      - node_source
+      - source_ids
+      - description
+      - node_type_raw
+
+  kg_edges:
+    path: artifacts/kg/construction/edges.csv
+    media_type: text/csv
+    producer: kg_construct_graph
+    required: true
+    required_columns: [edge_id, x_id, y_id, x_type, y_type, relation, source_db]
+
+  kg_graph:
+    path: artifacts/kg/construction/kg.csv
+    media_type: text/csv
+    producer: kg_construct_graph
+    required: true
+    required_columns: [x_type, x_id, x_index, relation, y_type, y_id, y_index]
+
+  kg_construction_manifest:
+    path: artifacts/kg/construction/manifest.json
+    media_type: application/json
+    producer: kg_construct_graph
+    required: true
+
+  kg_drug_match_report:
+    path: artifacts/kg/construction/drug_smiles_match_report.tsv
+    media_type: text/tab-separated-values
+    producer: kg_construct_graph
+    required: true
+
+  kg_invalid_smiles:
+    path: artifacts/kg/construction/invalid_smiles.tsv
+    media_type: text/tab-separated-values
+    producer: kg_construct_graph
+    required: true
+    may_be_empty: true
+    required_columns: [ID, SMILES, reason]
+
+  kg_unmapped_targets:
+    path: artifacts/kg/construction/unmapped_target_symbols.tsv
+    media_type: text/tab-separated-values
+    producer: kg_construct_graph
+    required: true
+    may_be_empty: true
+    required_columns: [gene_symbol, occurrence_count, compound_ids, reason]
+
+  kg_training_nodes:
+    path: artifacts/kg/training_data/node_typed.csv
+    media_type: text/csv
+    producer: kg_prepare_training_data
+    required: true
+
+  kg_training_base_edges:
+    path: artifacts/kg/training_data/kg_base.csv.gz
+    media_type: application/gzip
+    producer: kg_prepare_training_data
+    required: true
+    required_columns: [x_type, relation, y_type, x_idx, y_idx, x_id, y_id, split]
+
+  kg_training_edges:
+    path: artifacts/kg/training_data/kg_directed.csv.gz
+    media_type: application/gzip
+    producer: kg_prepare_training_data
+    required: true
+    required_columns: [x_type, relation, y_type, x_idx, y_idx, x_id, y_id, split]
+
+  kg_training_manifest:
+    path: artifacts/kg/training_data/manifest.json
+    media_type: application/json
+    producer: kg_prepare_training_data
+    required: true
+
+  kg_pretrain_checkpoint:
+    path: artifacts/kg/pretrain/best_pretrain_model.pt
+    media_type: application/octet-stream
+    producer: kg_pretrain
+    required: true
+
+  kg_pretrain_config:
+    path: artifacts/kg/pretrain/config.json
+    media_type: application/json
+    producer: kg_pretrain
+    required: true
+
+  kg_pretrain_history:
+    path: artifacts/kg/pretrain/history.json
+    media_type: application/json
+    producer: kg_pretrain
+    required: true
+
+  kg_pretrain_embeddings:
+    path: artifacts/kg/pretrain/node_embeddings.pt
+    media_type: application/octet-stream
+    producer: kg_pretrain
+    required_when: configs/workflow.yaml#kg.pretrain.save_embeddings_is_true
+
+  kg_pretrain_summary:
+    path: artifacts/kg/pretrain/summary.json
+    media_type: application/json
+    producer: kg_pretrain
+    required: true
+
+  kg_seed_ranking:
+    path_template: artifacts/kg/finetune/{seed_config_hash}/seed_{seed}/custom_disease_drug_ranking.csv
+    media_type: text/csv
+    producer: kg_finetune_seed
+    cardinality: one_per_configured_seed
+    required_columns: [node_id, node_name, source_ids, compound_ids, rank, score]
+    compound_ids:
+      type: list_of_strings
+      column_encoding: json_array
+      semantics: all_normalized_compound_IDs_mapped_to_this_KG_node
+
+  kg_seed_history:
+    path_template: artifacts/kg/finetune/{seed_config_hash}/seed_{seed}/history.json
+    media_type: application/json
+    producer: kg_finetune_seed
+    cardinality: one_per_configured_seed
+
+  kg_seed_summary:
+    path_template: artifacts/kg/finetune/{seed_config_hash}/seed_{seed}/summary.json
+    media_type: application/json
+    producer: kg_finetune_seed
+    cardinality: one_per_configured_seed
+
+  kg_seed_manifest:
+    path_template: artifacts/kg/finetune/{seed_config_hash}/seed_{seed}/manifest.json
+    media_type: application/json
+    producer: kg_finetune_seed
+    cardinality: one_per_configured_seed
+
+  kg_seed_checkpoint:
+    path_template: artifacts/kg/finetune/{seed_config_hash}/seed_{seed}/model.pt
+    media_type: application/octet-stream
+    producer: kg_finetune_seed
+    required_when: configs/workflow.yaml#kg.finetune.save_per_seed_models_is_true
+
+  kg_seed_embeddings:
+    path_template: artifacts/kg/finetune/{seed_config_hash}/seed_{seed}/node_embeddings.pt
+    media_type: application/octet-stream
+    producer: kg_finetune_seed
+    required_when: configs/workflow.yaml#kg.finetune.save_per_seed_embeddings_is_true
+
+  kg_ensemble_ranking:
+    path_template: artifacts/kg/aggregate/{seed_config_hash}/kg_ensemble_ranking.csv
+    media_type: text/csv
+    producer: kg_aggregate_seeds
+    required: true
+    required_columns:
+      - node_id
+      - node_name
+      - source_ids
+      - compound_ids
+      - rank_mean
+      - rank_median
+      - rank_std
+      - rank_min
+      - rank_max
+      - score_mean
+      - score_std
+      - n_seeds
+      - top100_freq
+      - top200_freq
+    compound_ids:
+      type: list_of_strings
+      column_encoding: json_array
+      one_node_may_map_to_multiple_compounds: true
+
+  kg_ensemble_seed_summaries:
+    path_template: artifacts/kg/aggregate/{seed_config_hash}/ensemble_seed_summaries.csv
+    media_type: text/csv
+    producer: kg_aggregate_seeds
+    required: true
+
+  kg_ensemble_summary:
+    path_template: artifacts/kg/aggregate/{seed_config_hash}/ensemble_summary.json
+    media_type: application/json
+    producer: kg_aggregate_seeds
+    required: true
+
+  final_candidates:
+    path: artifacts/final/final_candidates.tsv
+    media_type: text/tab-separated-values
+    producer: rank_candidates
+    required: true
+    may_be_empty: true
+    required_columns:
+      final_rank: {type: integer}
+      compound_id: {type: string}
+      compound_name: {type: string, nullable: true}
+      evidence_mode: {type: string, allowed_values: [kg_proximity, kg_proximity_gps]}
+      evidence_count: {type: integer, allowed_values: [2, 3]}
+      consensus_rank_percentile_mean: {type: number}
+      kg_rank_mean: {type: number}
+      kg_score_mean: {type: number}
+      proximity_z: {type: number}
+      gps_score: {type: number, nullable_in_modes: [core]}
+    kg_node_expansion:
+      source_column: compound_ids
+      behavior: emit_one_candidate_row_per_compound_ID
+      shared_node_metrics_are_preserved: true
+
+  ranking_summary:
+    path: artifacts/final/ranking_summary.json
+    media_type: application/json
+    producer: rank_candidates
+    required: true
+    required_fields:
+      - schema_version
+      - status
+      - evidence_mode
+      - evidence_count
+      - method
+      - thresholds
+      - percentile_definition
+      - weights
+      - tie_breakers
+      - stage_counts
+      - input_sources
+      - outputs
+    status_values: [succeeded, no_candidates_passed]
+
+  run_report_json:
+    path: reports/run_report.json
+    media_type: application/json
+    producer: generate_run_report
+    required: true
+    required_fields:
+      - schema_version
+      - report_type
+      - generated_at
+      - run_id
+      - workflow
+      - configuration
+      - input_sources
+      - skips
+      - nodes
+      - node_status_counts
+      - timing
+      - environment
+      - ranking
+      - candidate_count
+      - output_paths
+      - interpretation_scope
+    interpretation_scope: computational_evidence_only_no_clinical_conclusions
+
+  run_report_markdown:
+    path: reports/run_report.md
+    media_type: text/markdown
+    producer: generate_run_report
+    required: true
+    interpretation_scope: computational_evidence_only_no_clinical_conclusions
+
+  node_result:
+    path_template: artifacts/node_results/{node_id}/{task_id}.json
+    media_type: application/json
+    producer: runtime_wrapper
+    cardinality: one_per_terminal_execution_instance
+    required_fields:
+      - node_id
+      - task_id
+      - status
+      - started_at
+      - finished_at
+      - attempt
+      - outputs
+      - metrics
+      - warnings
+      - error
+
+  node_artifact_manifest:
+    path_template: artifacts/manifests/{node_id}/{task_id}/{artifact_id}.json
+    media_type: application/json
+    producer: runtime_wrapper
+    cardinality: one_per_produced_artifact
+    required_fields:
+      - artifact_id
+      - artifact_type
+      - relative_path
+      - size_bytes
+      - sha256
+      - created_at
+      - producer_node_id
+      - producer_task_id
+      - input_artifact_ids
+      - config_hash
+      - code_version
+      - resource_hashes
+
+  node_log:
+    path_template: logs/{node_id}/{task_id}.jsonl
+    media_type: application/x-ndjson
+    producer: runtime_wrapper
+    cardinality: one_per_started_execution_instance

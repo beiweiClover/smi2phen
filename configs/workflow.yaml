@@ -1,0 +1,234 @@
+schema_version: "1.0"
+workflow:
+  id: lipid_screening_v2
+  version: "2.0"
+  default_mode: core
+  modes:
+    core:
+      evidence_mode: kg_proximity
+      evidence: [kg, proximity]
+      gps_branch: skipped
+    enhanced:
+      evidence_mode: kg_proximity_gps
+      evidence: [kg, proximity, gps]
+      gps_branch: required
+  legacy_generated_results_as_default_inputs: false
+  artifact_path_root: run_workspace
+
+disease:
+  name: hepatic steatosis
+  slug: hepatic_steatosis
+  identifier: null
+  custom_node_id: disease:custom:hepatic_steatosis
+  species: human
+  tissue: liver
+  description: Human hepatic steatosis reference regression phenotype.
+  source_tag: custom
+
+resource_reference_semantics:
+  environment_placeholder: "${VARIABLE_NAME}"
+  access: read_only
+  copied_into_run_workspace: false
+
+run_workspace:
+  parent: "${LIPID_AGENT_RUNS_DIR}"
+  child_template: "{run_id}"
+  isolate_each_run: true
+  allow_outputs_outside_workspace: false
+
+resources:
+  gps:
+    root: "${LIPID_AGENT_GPS_RESOURCE_DIR}"
+    model_code: GPS4Drugs/code
+    model_data: GPS4Drugs/data
+    human_gene_info: Homo_sapiens.gene_info.gz
+    gene_mapping_supported_species: [human]
+    expression_supported_species: [human]
+  netinfer:
+    root: "${LIPID_AGENT_NETINFER_RESOURCE_DIR}"
+    drug_target_network: DT.tsv
+    drug_substructure_network: DS.tsv
+    supplementary_workbook: d1sc05613a1_suppl.xlsx
+    supported_species: [human]
+  proximity:
+    interactome: "${LIPID_AGENT_PPI_RESOURCE_FILE}"
+    supported_species: [human]
+  kg:
+    base_graph_root: "${LIPID_AGENT_KG_BASE_RESOURCE_DIR}"
+    node_table: node.csv
+    edge_table: edges.csv
+    manifest: manifest.json
+    drug_smiles: base_drug_smiles.tsv
+    supported_species: [human]
+
+gps:
+  drug_profiles:
+    cell_lines: [HEPG2_t0, MCF7_t1, PC3_t1, VCAP_t1]
+    output_cell_line: HEPG2_t0
+    batch_size: 2048
+    probability_threshold: 0.95
+    fingerprint:
+      algorithm: morgan_bit_vector
+      bits: 1024
+      radius: 3
+      use_features: false
+    seed: 1
+    device: auto
+    preserve_legacy_cell_line_order: true
+  disease_signature:
+    fdr_cutoff: 0.05
+    absolute_log2fc_cutoff: 0.5
+    tpm_filter_cutoff: 1.0
+    minimum_group_fraction_expressed: 0.20
+    test: welch_t_test
+    multiple_testing: benjamini_hochberg_after_expression_filter
+    multi_comparison_combination: direction_consistent_intersection
+  scoring:
+    random_background_samples: 1500
+    seed: 42
+    lower_is_better: true
+
+netinfer:
+  method: wnbi
+  top_n_predicted_targets: 10
+  batch_size: 5000
+  inference_batch_size: 256
+  device: auto
+  dtype: float32
+  novel_compound_fingerprint:
+    algorithm: morgan_feature_count
+    radius: 2
+    use_features: true
+  parameters:
+    k: 2
+    alpha: 0.4
+    beta: 0.2
+    gamma: -0.5
+    delta: 20
+    epsilon: 4
+  known_drug:
+    nbi_types: [SUB, DRUG, TARGET]
+    predict_types: [DRUG, TARGET]
+  novel_compound:
+    nbi_types: [SUB, COMPOUND+DRUG, TARGET]
+    predict_types: [COMPOUND, TARGET]
+
+proximity:
+  randomizations: 1000
+  minimum_degree_bin_size: 100
+  seed: 452456
+  job_batch_size: 32
+  background_component: largest_connected_component
+  randomization: degree_matched
+  lower_is_better: true
+
+kg:
+  construction:
+    candidate_source_tag: "UserLibrary:"
+    user_drug_node_prefix: "mol:user:"
+    netinfer_dti_top_n: 5
+    netinfer_dti_selection: known_first_then_predicted_rank
+    pubchem_fingerprint_workers: -1
+    pubchem_fingerprint_chunk_size: 2000
+  training_data:
+    seed: 42
+    valid_fraction: 0.05
+    test_fraction: 0.05
+    pin_custom_disease_positive_edges_to_train: true
+  pretrain:
+    device: auto
+    epochs: 5
+    batch_size: 4096
+    learning_rate: 0.001
+    negative_samples_per_positive: 1
+    negative_method: fix_dst
+    optimizer: adamw
+    best_model_metric: macro_auprc
+    train_print_every_batches: 50
+    validate_every_epochs: 1
+    early_stopping_patience: 10
+    early_stopping_min_delta: 0.0001
+    save_embeddings: true
+    model:
+      input_dimension: 128
+      hidden_dimension: 128
+      output_dimension: 128
+      attention: false
+      prototype_learning: false
+      prototype_count: 3
+      similarity_measure: all_nodes_profile
+      bert_measure: disease_name
+      aggregation_measure: rarity
+      exponential_lambda: 0.7
+      random_walks: 200
+      walk_mode: bit
+      path_length: 2
+  finetune:
+    seeds: [5, 6, 7, 8, 9]
+    relations:
+      forward: [drug, drug_disease, disease]
+      reverse: [disease, rev_drug_disease, drug]
+    device: auto
+    epochs: 1000
+    learning_rate: 0.0005
+    weight_decay: 0.0
+    gradient_clip_norm: null
+    negative_samples_per_positive: 1
+    negative_method: fix_dst
+    optimizer: adamw
+    loss: binary_cross_entropy_with_logits
+    train_print_every_epochs: 20
+    validate_every_epochs: 20
+    validate_first_epoch: true
+    early_stopping_patience: 8
+    best_model_metric: macro_auroc
+    scheduler_factor: 0.8
+    scheduler_patience: 10
+    reset_decoder: false
+    resume_completed_seeds: true
+    save_per_seed_models: false
+    save_per_seed_embeddings: false
+    same_pretrain_checkpoint_for_every_seed: true
+    scheduling:
+      maximum_concurrent_tasks_per_gpu: 1
+      allow_parallel_on_distinct_gpus: true
+  aggregation:
+    primary_sort: rank_mean
+    required_metrics:
+      - rank_mean
+      - rank_median
+      - rank_std
+      - rank_min
+      - rank_max
+      - score_mean
+      - score_std
+      - n_seeds
+      - top100_freq
+      - top200_freq
+    rra:
+      enabled_by_default: false
+      role: experimental_optional_output
+
+ranking:
+  kg:
+    top_n: 200
+    metric: rank_mean
+    direction: ascending
+  proximity:
+    metric: z
+    filter:
+      operator: lt
+      value: 0.0
+    direction: ascending
+  gps:
+    metric: GPS_score_zRGES_like_lower_better
+    filter:
+      operator: lt
+      value: 0.0
+    direction: ascending
+  consensus:
+    method: within_intersection_rank_percentile_mean
+    weights: equal_over_available_evidence
+  empty_intersection:
+    status: no_candidates_passed
+    auto_relax_thresholds: false

@@ -1,0 +1,350 @@
+{
+  "schema_version": "1.1",
+  "description": "External scientific resource snapshot audited for smi2phen. Only exact, license-reviewed upstream GPS files are configured for automatic download.",
+  "readiness_policy": {
+    "core": "Default NetInfer target path plus gene mapping, PPI, and KG resources.",
+    "enhanced": "Core resources plus the configured GPS models and feature tables."
+  },
+  "release_audit": {
+    "project_trained_weights": {
+      "resource_ids": [],
+      "status": "none_required_by_current_code"
+    },
+    "third_party_upstream_downloadable": {
+      "resource_ids": [
+        "gps_model_definition",
+        "gps_model_hepg2_t0",
+        "gps_model_mcf7_t1",
+        "gps_model_pc3_t1",
+        "gps_model_vcap_t1",
+        "gps_features_hepg2_t0",
+        "gps_features_mcf7_t1",
+        "gps_features_pc3_t1",
+        "gps_features_vcap_t1"
+      ],
+      "status": "byte_verified_against_pinned_upstream_commit"
+    },
+    "manual_only_needs_review": {
+      "resource_ids": [
+        "gene_info_human",
+        "netinfer_drug_target_network",
+        "netinfer_drug_substructure_network",
+        "netinfer_supplementary_workbook",
+        "ppi_human_interactome",
+        "kg_node_table",
+        "kg_edge_table",
+        "kg_manifest",
+        "kg_base_drug_smiles"
+      ],
+      "status": "not_approved_for_rehosting"
+    }
+  },
+  "resources": [
+    {
+      "resource_id": "gene_info_human",
+      "filename": "Homo_sapiens.gene_info.gz",
+      "expected_relative_path": "gps/Homo_sapiens.gene_info.gz",
+      "size": 5178108,
+      "sha256": "9422fe8d88ab773fe1ebfa160b3e93a5cf21c7dd626653a59a37046b82ca3c4f",
+      "source": "https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/",
+      "version": "audited snapshot; mutable upstream revision needs_review",
+      "license": "NCBI data-use terms; needs_review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/",
+        "reason": "The NCBI current file is mutable and was not verified as the exact audited snapshot."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "input_mapping,gps"
+    },
+    {
+      "resource_id": "netinfer_drug_target_network",
+      "filename": "DT.tsv",
+      "expected_relative_path": "netinfer/DT.tsv",
+      "size": 1576282,
+      "sha256": "4d480f27e8010a3d19cb4d46c05273e263b62acac5e0ec5b7df579a4da6bb7cf",
+      "source": "https://doi.org/10.1039/D1SC05613A",
+      "version": "Chemical Science 2022 supplementary snapshot; exact file revision needs_review",
+      "license": "article CC BY-NC 3.0; incorporated database and data rights need review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://pubs.rsc.org/en/content/articlehtml/2022/sc/d1sc05613a",
+        "reason": "The exact network file and all incorporated source-data redistribution rights are not established."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "netinfer"
+    },
+    {
+      "resource_id": "netinfer_drug_substructure_network",
+      "filename": "DS.tsv",
+      "expected_relative_path": "netinfer/DS.tsv",
+      "size": 12685057,
+      "sha256": "dad848006075b3c9c4712be3144bc166959b2c21d8fe75d7a4ce521544ebd75e",
+      "source": "https://doi.org/10.1039/D1SC05613A",
+      "version": "Chemical Science 2022 supplementary snapshot; exact file revision needs_review",
+      "license": "article CC BY-NC 3.0; incorporated database and data rights need review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://pubs.rsc.org/en/content/articlehtml/2022/sc/d1sc05613a",
+        "reason": "The exact network file and all incorporated source-data redistribution rights are not established."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "netinfer"
+    },
+    {
+      "resource_id": "netinfer_supplementary_workbook",
+      "filename": "d1sc05613a1_suppl.xlsx",
+      "expected_relative_path": "netinfer/d1sc05613a1_suppl.xlsx",
+      "size": 5182454,
+      "sha256": "bb981c75cb68f97250205d1e590c9cd09b02ad36e9056a964bd196a41b855203",
+      "source": "https://doi.org/10.1039/D1SC05613A",
+      "version": "Chemical Science 2022 supplementary snapshot; exact file revision needs_review",
+      "license": "article CC BY-NC 3.0; supplementary and incorporated data rights need review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://pubs.rsc.org/en/content/articlehtml/2022/sc/d1sc05613a",
+        "reason": "The audited workbook's exact public URL and redistribution scope were not verified."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "netinfer"
+    },
+    {
+      "resource_id": "ppi_human_interactome",
+      "filename": "HumanInteractome.tsv",
+      "expected_relative_path": "ppi/HumanInteractome.tsv",
+      "size": 13992428,
+      "sha256": "9b29a5ec6796430e5d879d139789a0ec5a3e4e48d95c217923103dd6d94f0522",
+      "source": "assembled InWeb_IM, IntAct, and PINA snapshot; exact assembly provenance needs_review",
+      "version": "needs_review",
+      "license": "mixed upstream terms; needs_review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": null,
+        "reason": "The exact assembly recipe, source revisions, and combined redistribution rights are not established."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "proximity"
+    },
+    {
+      "resource_id": "kg_node_table",
+      "filename": "node.csv",
+      "expected_relative_path": "kg-base/node.csv",
+      "size": 3090216,
+      "sha256": "e23a0a2b7fc33d561e4b6fc0ef8577c0b8bca49d68decd7c7dc3e1f23e180f54",
+      "source": "https://github.com/mims-harvard/PrimeKG",
+      "version": "locally transformed PrimeKG-derived snapshot; transformation revision needs_review",
+      "license": "PrimeKG code is MIT; dataset and component-source licenses are distinct and need review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://github.com/mims-harvard/PrimeKG",
+        "reason": "This is a transformed local table, not the byte-identical official PrimeKG download."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "kg"
+    },
+    {
+      "resource_id": "kg_edge_table",
+      "filename": "edges.csv",
+      "expected_relative_path": "kg-base/edges.csv",
+      "size": 242169066,
+      "sha256": "8e5df2a11f592c9d49a0bba676a8f61e55658237616a7b2e733acb499fd13b13",
+      "source": "https://github.com/mims-harvard/PrimeKG",
+      "version": "locally transformed PrimeKG-derived snapshot; transformation revision needs_review",
+      "license": "PrimeKG code is MIT; dataset and component-source licenses are distinct and need review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://github.com/mims-harvard/PrimeKG",
+        "reason": "This is a transformed local table, not the byte-identical official PrimeKG download."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "kg"
+    },
+    {
+      "resource_id": "kg_manifest",
+      "filename": "manifest.json",
+      "expected_relative_path": "kg-base/manifest.json",
+      "size": 1305,
+      "sha256": "d0e949d4632aec6f8725872aaac3c0c197ea92b71fe9cbf2ed95b0a68528b940",
+      "source": "https://github.com/mims-harvard/PrimeKG",
+      "version": "local transformation manifest; transformation revision needs_review",
+      "license": "derived-data provenance and redistribution terms need review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://github.com/mims-harvard/PrimeKG",
+        "reason": "The local transformation manifest contains snapshot-specific metadata and is not an upstream file."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "kg"
+    },
+    {
+      "resource_id": "kg_base_drug_smiles",
+      "filename": "base_drug_smiles.tsv",
+      "expected_relative_path": "kg-base/base_drug_smiles.tsv",
+      "size": 1444620,
+      "sha256": "43a327ed932711e9fab7ecc0b4bbc45d44677f391d93d2920388212b453fd616",
+      "source": "PrimeKG-derived local compound mapping; exact derivation provenance needs_review",
+      "version": "needs_review",
+      "license": "derived-data and component-source terms need review",
+      "redistribution_status": "manual_only_needs_review",
+      "download_url": null,
+      "manual_download": {
+        "official_page": "https://github.com/mims-harvard/PrimeKG",
+        "reason": "The mapping is a local derived artifact and no reproducible public transformation was identified."
+      },
+      "required": true,
+      "required_for": ["core", "enhanced"],
+      "module": "kg"
+    },
+    {
+      "resource_id": "gps_model_definition",
+      "filename": "model.py",
+      "expected_relative_path": "gps/GPS4Drugs/code/model.py",
+      "size": 912,
+      "sha256": "2ee52d57cb645814dc06cf6275979646e4f777ff08289d1cc1820f272ffdbcf2",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/code/model.py",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_model_hepg2_t0",
+      "filename": "model.pkl",
+      "expected_relative_path": "gps/GPS4Drugs/code/results/HEPG2_t0/multi/model.pkl",
+      "size": 3330304,
+      "sha256": "47b333a95dd0763b3fff2b5a55ba787baebd7dad0c73843f534fc628a17fe890",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/code/results/HEPG2_t0/multi/model.pkl",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_model_mcf7_t1",
+      "filename": "model.pkl",
+      "expected_relative_path": "gps/GPS4Drugs/code/results/MCF7_t1/multi/model.pkl",
+      "size": 4440324,
+      "sha256": "6c458f266a75b4a83bb89922e2480b3b10963d9f3d069d1d4440d5efa43ca3be",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/code/results/MCF7_t1/multi/model.pkl",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_model_pc3_t1",
+      "filename": "model.pkl",
+      "expected_relative_path": "gps/GPS4Drugs/code/results/PC3_t1/multi/model.pkl",
+      "size": 3330304,
+      "sha256": "ea7885482bfc5b15adf870f08ac8659db434c8dd4340ce0607a5934b256f2cfc",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/code/results/PC3_t1/multi/model.pkl",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_model_vcap_t1",
+      "filename": "model.pkl",
+      "expected_relative_path": "gps/GPS4Drugs/code/results/VCAP_t1/multi/model.pkl",
+      "size": 4440372,
+      "sha256": "ea081aa19d1cabd03c8e4712b160ffba0bac643434ad92c273f2ca8f821d2bd7",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/code/results/VCAP_t1/multi/model.pkl",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_features_hepg2_t0",
+      "filename": "go_fingerprints_2k_HEPG2_t0.csv",
+      "expected_relative_path": "gps/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_HEPG2_t0.csv",
+      "size": 4437886,
+      "sha256": "413e6a9c2d5005833c6b7f9b9c712763de59abaa327abf4e4e3c2f907cffa7f3",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_HEPG2_t0.csv",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_features_mcf7_t1",
+      "filename": "go_fingerprints_2k_MCF7_t1.csv",
+      "expected_relative_path": "gps/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_MCF7_t1.csv",
+      "size": 4571096,
+      "sha256": "00a926ddb68adeada786dc7c2194c6715a6ab8887ede8ddee8e917840ea0061c",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_MCF7_t1.csv",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_features_pc3_t1",
+      "filename": "go_fingerprints_2k_PC3_t1.csv",
+      "expected_relative_path": "gps/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_PC3_t1.csv",
+      "size": 4604401,
+      "sha256": "4064ddc5489066113e26cbe306e89e25b3bf1b1a7b60ce68824440ef719fc788",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_PC3_t1.csv",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    },
+    {
+      "resource_id": "gps_features_vcap_t1",
+      "filename": "go_fingerprints_2k_VCAP_t1.csv",
+      "expected_relative_path": "gps/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_VCAP_t1.csv",
+      "size": 4462319,
+      "sha256": "a0f620c1a5c8bce6d64ff36c730c65a79dea67e90fe101463d996aec85cc8f1e",
+      "source": "https://github.com/Bin-Chen-Lab/GPS",
+      "version": "c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98",
+      "license": "Apache-2.0",
+      "redistribution_status": "upstream_direct_download_verified",
+      "download_url": "https://raw.githubusercontent.com/Bin-Chen-Lab/GPS/c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98/GPS4Drugs/data/input_gene_features/go_fingerprints_2k_VCAP_t1.csv",
+      "required": true,
+      "required_for": ["enhanced"],
+      "module": "gps"
+    }
+  ]
+}

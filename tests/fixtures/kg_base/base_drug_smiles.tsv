@@ -1,0 +1,2 @@
+node_id	node_name	smiles	drugbank_id	pubchem_cid	inchikey	smiles_source	name	targetmol_id	cas	formula	molwt	source_ids
+mol:base:ethanol	Ethanol	CCO	DB00898			fixture	Ethanol		64-17-5	C2H6O	46.07	DrugBank:DB00898

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "resource_id": "kg-base:unit-fixture-v1",
+  "variant": "unit_fixture",
+  "num_nodes": 6,
+  "num_edges": 3
+}

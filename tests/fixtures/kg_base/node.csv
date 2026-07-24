@@ -1,0 +1,7 @@
+node_index	node_id	node_type	node_name	node_source	source_ids	description	node_type_raw
+0	mol:base:ethanol	drug	Ethanol	PrimeKG	DrugBank:DB00898	fixture	small_molecule
+1	protein:ncbi:101	gene/protein	GENE1	NCBI	NCBI:101	fixture	protein
+2	protein:ncbi:202	gene/protein	GENE2	NCBI	NCBI:202	fixture	protein
+3	disease:base:lipid	disease	Lipid disorder	MONDO	MONDO:fixture	fixture	disease
+4	substructure:pubchemfp:000	substructure	PubChemFP 0	PubChemFP	PubChemFP:0	fixture	substructure
+5	substructure:pubchemfp:001	substructure	PubChemFP 1	PubChemFP	PubChemFP:1	fixture	substructure

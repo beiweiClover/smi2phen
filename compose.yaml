@@ -1,0 +1,93 @@
+name: smi2phen
+
+x-environment: &environment
+  REDIS_URL: redis://redis:6379/0
+  LIPID_AGENT_REDIS_NAMESPACE: smi2phen
+  LIPID_AGENT_PROJECT_ROOT: /opt/smi2phen
+  LIPID_AGENT_STATE_DIR: /state
+  LIPID_AGENT_DB: /state/state.sqlite3
+  LIPID_AGENT_RUNS_DIR: /runs
+  LIPID_AGENT_RESOURCE_ROOT: /resources
+  LIPID_AGENT_GPS_RESOURCE_DIR: /resources/gps
+  LIPID_AGENT_NETINFER_RESOURCE_DIR: /resources/netinfer
+  LIPID_AGENT_PPI_RESOURCE_FILE: /resources/ppi/HumanInteractome.tsv
+  LIPID_AGENT_KG_BASE_RESOURCE_DIR: /resources/kg-base
+  LIPID_AGENT_VALIDATION_MODE: ${LIPID_AGENT_VALIDATION_MODE:-0}
+
+x-volumes: &volumes
+  - ./.runtime/runs:/runs
+  - ./.runtime/state:/state
+  - ${SMI2PHEN_RESOURCE_DIR:-./.local-resources}:/resources:ro
+
+x-unified: &unified
+  image: ${SMI2PHEN_IMAGE:-smi2phen:latest}
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.unified
+    args:
+      UNIFIED_BASE_IMAGE: ${SMI2PHEN_UNIFIED_BASE_IMAGE:-pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime@sha256:3387e598cb94fc248d82e712a65b10931a990cea3a2e76362ca30d135f565de4}
+
+services:
+  redis:
+    image: redis:7.2-bookworm
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [backend]
+
+  api:
+    <<: *unified
+    command: ["uvicorn", "lipid_screening_agent.backend.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *environment
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+    volumes: *volumes
+    ports:
+      - "${SMI2PHEN_API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [backend]
+
+  unified-worker:
+    <<: *unified
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    gpus: all
+    environment:
+      <<: *environment
+      LIPID_AGENT_WORKER_ID: smi2phen-unified-worker
+      LIPID_AGENT_WORKER_QUEUES: cpu,gps,netinfer,kg
+      LIPID_AGENT_LEASE_SECONDS: 300
+      LIPID_AGENT_WORKER_HEARTBEAT_TTL: 300
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes: *volumes
+    healthcheck:
+      test: ["CMD", "python", "-m", "lipid_screening_agent.worker", "--healthcheck"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+    networks: [backend]
+
+volumes:
+  redis-data:
+
+networks:
+  backend:

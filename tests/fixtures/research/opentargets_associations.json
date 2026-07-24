@@ -1,0 +1,1 @@
+{"data":{"disease":{"id":"EFO_0001360","name":"type 2 diabetes mellitus","associatedTargets":{"count":1,"rows":[{"score":0.71,"target":{"id":"ENSG00000148737","approvedSymbol":"TCF7L2","approvedName":"transcription factor 7 like 2"}}]}}}}

@@ -1,0 +1,373 @@
+schema_version: "1.0"
+contract: workflow_nodes
+
+node_states:
+  - pending
+  - ready
+  - queued
+  - running
+  - succeeded
+  - failed
+  - blocked
+  - cached
+  - skipped
+  - cancelled
+
+execution_rules:
+  deterministic_without_llm: true
+  outputs_confined_to_run_workspace: true
+  resources_read_only: true
+  explicit_paths_required: true
+  cache_key_components: [input_artifact_sha256, config_hash, code_version, resource_hash]
+  successful_dependency_states: [succeeded, cached]
+  optional_dependency_terminal_states: [succeeded, cached, skipped]
+  optional_dependencies_must_reach_terminal_state: true
+  task_id_semantics:
+    non_fan_out: main
+    fan_out: deterministic_and_unique_from_item_key_and_value
+  retry_preserves_successful_upstream_artifacts: true
+  every_started_node_writes: [node_result, node_log]
+  every_successful_or_cached_node_writes: [node_artifact_manifest]
+  disease_readiness_before_planning:
+    disease_genes: required_for_core
+    expression_pairs: controls_gps_only
+    species: human_only
+    compatibility_checks: [gene_mapping, netinfer_target_space, ppi, kg_base, gps_expression_space]
+    user_explanation_statuses: [available, blocked, skipped, unsupported]
+
+modes:
+  core:
+    evidence_mode: kg_proximity
+    gps_nodes: skipped
+  enhanced:
+    evidence_mode: kg_proximity_gps
+    gps_nodes: required
+    expression_data_unavailable:
+      effective_evidence_mode: kg_proximity
+      gps_nodes: skipped
+
+nodes:
+  - id: create_run_workspace
+    stage: preparation
+    modes: [core, enhanced]
+    dependencies: []
+    responsibility: Create one isolated run workspace and freeze run configuration.
+    inputs:
+      config: configs/workflow.yaml
+    outputs: [run_manifest]
+    retry_scope: node
+
+  - id: register_inputs
+    stage: preparation
+    modes: [core, enhanced]
+    dependencies: [create_run_workspace]
+    responsibility: Register user files with provenance, size, and SHA-256.
+    inputs:
+      registered_input_keys:
+        - compound_library
+        - disease_genes
+        - expression_pairs
+        - positive_drugs
+        - disease_links
+    outputs: [input_registration_manifest]
+    retry_scope: node
+
+  - id: prepare_compound_library
+    stage: preparation
+    modes: [core, enhanced]
+    dependencies: [register_inputs]
+    responsibility: Normalize ID and SMILES and report invalid molecules.
+    inputs:
+      registered_inputs: [compound_library]
+    outputs: [compounds_normalized, invalid_smiles]
+    retry_scope: node
+
+  - id: prepare_disease_genes
+    stage: preparation
+    modes: [core, enhanced]
+    dependencies: [register_inputs]
+    responsibility: Normalize human gene symbols and Entrez IDs and report unmapped genes.
+    inputs:
+      registered_inputs: [disease_genes]
+      resources: [resources.gps.human_gene_info]
+    outputs: [disease_genes_normalized, unmapped_genes]
+    retry_scope: node
+
+  - id: import_drug_targets
+    stage: preparation
+    modes: [provided_targets_core, provided_targets_enhanced]
+    dependencies: [register_inputs, prepare_compound_library]
+    responsibility: Validate and freeze provided drug targets behind the target-provider boundary.
+    inputs:
+      registered_inputs: [drug_targets, target_mapping]
+      artifacts: [compounds_normalized]
+    outputs: [drug_targets, target_mapping]
+    retry_scope: node
+
+  - id: prepare_expression_inputs
+    stage: preparation
+    modes: [enhanced]
+    dependencies: [register_inputs]
+    responsibility: Pair and minimally validate TPM and metadata files without computing DEG.
+    inputs:
+      registered_inputs: [expression_pairs]
+    outputs: [expression_comparisons_manifest]
+    skip_when: expression_data_explicitly_unavailable
+    skipped_output_count: 0
+    retry_scope: node
+
+  - id: gps_predict_drug_profiles
+    stage: gps
+    modes: [enhanced]
+    dependencies: [prepare_compound_library]
+    responsibility: Predict compound perturbation profiles in the configured GPS gene space.
+    inputs:
+      artifacts: [compounds_normalized]
+      resources: [resources.gps.root]
+      config: gps.drug_profiles
+    outputs: [gps_drug_profiles]
+    retry_scope: node
+
+  - id: gps_build_disease_signature
+    stage: gps
+    modes: [enhanced]
+    dependencies: [prepare_expression_inputs]
+    responsibility: Build the direction-consistent disease expression signature.
+    inputs:
+      artifacts: [expression_comparisons_manifest, gps_drug_profiles]
+      resources: [resources.gps.human_gene_info]
+      config: gps.disease_signature
+    outputs: [gps_drug_profiles_entrez, gps_disease_signature]
+    skip_when: prepare_expression_inputs_status_is_skipped
+    skipped_output_count: 0
+    retry_scope: node
+
+  - id: gps_score_compounds
+    stage: gps
+    modes: [enhanced]
+    dependencies: [gps_predict_drug_profiles, gps_build_disease_signature]
+    responsibility: Compute lower-is-better GPS reversal scores.
+    inputs:
+      artifacts: [gps_drug_profiles_entrez, gps_disease_signature]
+      config: gps.scoring
+    outputs: [gps_scores]
+    retry_scope: node
+
+  - id: netinfer_prepare_inputs
+    stage: netinfer
+    modes: [core, enhanced]
+    dependencies: [prepare_compound_library]
+    responsibility: Match known drugs and create retryable novel-compound batches.
+    inputs:
+      artifacts: [compounds_normalized]
+      resources: [resources.netinfer.supplementary_workbook]
+      config: netinfer
+    outputs:
+      - netinfer_input_mapping
+      - netinfer_batch_manifest
+      - netinfer_target_map
+      - netinfer_batch_input
+    retry_scope: node
+
+  - id: netinfer_predict_known
+    stage: netinfer
+    modes: [core, enhanced]
+    dependencies: [netinfer_prepare_inputs]
+    responsibility: Run in-process Python wSDTNBI prediction for matched DRUG nodes.
+    inputs:
+      artifacts: [netinfer_input_mapping]
+      resources:
+        - resources.netinfer.drug_target_network
+        - resources.netinfer.drug_substructure_network
+      config: netinfer
+    outputs: [netinfer_known_predictions]
+    no_op_when: no_known_drug_inputs
+    no_op_status: succeeded
+    retry_scope: node
+
+  - id: netinfer_predict_batch
+    stage: netinfer
+    modes: [core, enhanced]
+    dependencies: [netinfer_prepare_inputs]
+    responsibility: Run one independently retryable Python wSDTNBI novel-compound batch.
+    inputs:
+      artifacts: [netinfer_batch_manifest, netinfer_batch_input]
+      resources:
+        - resources.netinfer.drug_target_network
+        - resources.netinfer.drug_substructure_network
+      config: netinfer
+    outputs: [netinfer_batch_predictions]
+    fan_out:
+      source: netinfer_batch_manifest
+      item_key: batch_id
+    skip_when: no_novel_compound_batches
+    retry_scope: batch_id
+
+  - id: netinfer_merge_targets
+    stage: netinfer
+    modes: [core, enhanced]
+    dependencies: [netinfer_prepare_inputs]
+    optional_dependencies: [netinfer_predict_known, netinfer_predict_batch]
+    responsibility: Merge known and batch predictions and map targets to gene symbols.
+    inputs:
+      artifacts:
+        - netinfer_input_mapping
+        - netinfer_batch_manifest
+        - netinfer_target_map
+        - netinfer_known_predictions
+        - netinfer_batch_predictions
+    outputs: [drug_targets, netinfer_missing_predictions]
+    retry_scope: node
+
+  - id: proximity_prepare_network
+    stage: proximity
+    modes: [core, enhanced, provided_targets_core, provided_targets_enhanced]
+    dependencies_by_target_source:
+      netinfer: [prepare_disease_genes, netinfer_prepare_inputs, netinfer_merge_targets]
+      provided: [prepare_disease_genes, import_drug_targets]
+    responsibility: Load the PPI LCC, normalize target nodes, and build disease-distance cache.
+    inputs:
+      artifacts: [disease_genes_normalized, drug_targets]
+      resources: [resources.proximity.interactome, target_mapping_from_selected_provider]
+      config: proximity
+      outputs:
+        - proximity_network_manifest
+        - proximity_prepared_network
+        - proximity_prepared_targets
+        - proximity_disease_distance_cache
+        - proximity_skipped_compounds
+        - proximity_unmapped_targets
+    retry_scope: node
+
+  - id: proximity_score_compounds
+    stage: proximity
+    modes: [core, enhanced]
+    dependencies: [proximity_prepare_network]
+    responsibility: Compute degree-matched network-proximity z-scores.
+    inputs:
+      artifacts:
+        - proximity_network_manifest
+        - proximity_prepared_network
+        - proximity_prepared_targets
+        - proximity_disease_distance_cache
+      config: proximity
+    outputs: [proximity_scores]
+    retry_scope: node
+
+  - id: kg_construct_graph
+    stage: kg
+    modes: [core, enhanced, provided_targets_core, provided_targets_enhanced]
+    dependencies_by_target_source:
+      netinfer:
+        [prepare_compound_library, prepare_disease_genes, netinfer_prepare_inputs, netinfer_merge_targets]
+      provided: [prepare_compound_library, prepare_disease_genes, import_drug_targets]
+    responsibility: Combine the configured base graph with run compounds, targets, and disease data.
+    inputs:
+      artifacts: [compounds_normalized, disease_genes_normalized, drug_targets]
+      optional_registered_inputs: [positive_drugs, disease_links]
+      resources: [resources.kg.base_graph_root, target_mapping_from_selected_provider]
+      config: [disease, kg.construction]
+    outputs:
+      - kg_nodes
+      - kg_edges
+      - kg_graph
+      - kg_construction_manifest
+      - kg_drug_match_report
+      - kg_invalid_smiles
+      - kg_unmapped_targets
+    retry_scope: node
+
+  - id: kg_prepare_training_data
+    stage: kg
+    modes: [core, enhanced]
+    dependencies: [kg_construct_graph]
+    responsibility: Deduplicate graph relations, add reverse edges, and create train/valid/test splits.
+    inputs:
+      artifacts: [kg_nodes, kg_graph, kg_construction_manifest]
+      config: kg.training_data
+    outputs: [kg_training_nodes, kg_training_base_edges, kg_training_edges, kg_training_manifest]
+    retry_scope: node
+
+  - id: kg_pretrain
+    stage: kg
+    modes: [core, enhanced]
+    dependencies: [kg_prepare_training_data]
+    responsibility: Pretrain one all-relation RGCN checkpoint.
+    inputs:
+      artifacts: [kg_training_nodes, kg_training_edges, kg_training_manifest]
+      config: kg.pretrain
+    outputs:
+      - kg_pretrain_checkpoint
+      - kg_pretrain_config
+      - kg_pretrain_history
+      - kg_pretrain_embeddings
+      - kg_pretrain_summary
+    retry_scope: node
+
+  - id: kg_finetune_seed
+    stage: kg
+    modes: [core, enhanced]
+    dependencies: [kg_pretrain]
+    responsibility: Fine-tune one configured seed from the shared pretrain checkpoint.
+    inputs:
+      artifacts: [kg_training_nodes, kg_training_edges, kg_pretrain_checkpoint]
+      config: kg.finetune
+    outputs:
+      - kg_seed_ranking
+      - kg_seed_history
+      - kg_seed_summary
+      - kg_seed_manifest
+      - kg_seed_checkpoint
+      - kg_seed_embeddings
+    fan_out:
+      source: configs/workflow.yaml
+      item_path: kg.finetune.seeds
+      item_key: seed
+      require_non_empty: true
+    retry_scope: seed
+
+  - id: kg_aggregate_seeds
+    stage: kg
+    modes: [core, enhanced]
+    dependencies: [kg_finetune_seed]
+    responsibility: Aggregate all configured seed rankings with rank_mean as the primary metric.
+    inputs:
+      artifacts: [kg_seed_ranking, kg_seed_summary]
+      config: kg.aggregation
+    outputs: [kg_ensemble_ranking, kg_ensemble_seed_summaries, kg_ensemble_summary]
+    fan_in:
+      source_node: kg_finetune_seed
+      require_all_configured_items: true
+    retry_scope: node
+
+  - id: rank_candidates
+    stage: final
+    modes: [core, enhanced]
+    dependencies_by_mode:
+      core: [kg_aggregate_seeds, proximity_score_compounds]
+      enhanced: [kg_aggregate_seeds, proximity_score_compounds, gps_score_compounds]
+    responsibility: Apply the configured two- or three-evidence intersection and consensus ranking.
+    inputs_by_mode:
+      core:
+        artifacts: [kg_ensemble_ranking, proximity_scores]
+      enhanced:
+        artifacts: [kg_ensemble_ranking, proximity_scores, gps_scores]
+    config: ranking
+    kg_node_expansion:
+      source_artifact: kg_ensemble_ranking
+      source_column: compound_ids
+      behavior: one_row_per_compound_ID
+    outputs: [final_candidates, ranking_summary]
+    empty_result_status: no_candidates_passed
+    retry_scope: node
+
+  - id: generate_run_report
+    stage: final
+    modes: [core, enhanced]
+    dependencies: [rank_candidates]
+    responsibility: Summarize inputs, decisions, parameters, nodes, timings, warnings, and results.
+    inputs:
+      artifacts: [run_manifest, input_registration_manifest, ranking_summary, final_candidates]
+      terminal_node_results: all
+    outputs: [run_report_json, run_report_markdown]
+    retry_scope: node

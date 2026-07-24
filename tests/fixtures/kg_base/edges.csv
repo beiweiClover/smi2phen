@@ -1,0 +1,4 @@
+edge_id,x_index,y_index,x_id,y_id,x_type,y_type,relation,relation_raw,edge_type,source_db,evidence,score,rank,original_relation
+edge:base:1,0,1,mol:base:ethanol,protein:ncbi:101,drug,gene/protein,drug_protein,target,small_molecule_protein,PrimeKG,PrimeKG,,,drug_protein:target
+edge:base:2,1,3,protein:ncbi:101,disease:base:lipid,gene/protein,disease,disease_protein,associated_with,protein_disease,PrimeKG,PrimeKG,,,disease_gene
+edge:base:duplicate,1,3,protein:ncbi:101,disease:base:lipid,gene/protein,disease,disease_protein,associated_with,protein_disease,fixture_duplicate,duplicate,,,duplicate

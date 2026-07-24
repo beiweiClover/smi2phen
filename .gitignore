@@ -1,0 +1,49 @@
+# Secrets and local overrides
+.env
+.env.*
+!.env.example
+deepseekapi.txt
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Runtime state, uploads, artifacts, resources, and databases
+.data/
+.docker-data/
+.runtime/
+.local-resources/
+.release-staging/
+.tmp-resource-audit-*/
+runs/
+state/
+uploads/
+logs/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Large resources must stay outside the submission
+resources/*
+!resources/manifest.json
+!resources/README.md
+
+# Python/build/tool caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Historical/formal local reports
+Report/
+formal_*.log
+formal_*.json
+formal_*.tsv

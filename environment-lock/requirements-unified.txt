@@ -1,0 +1,17 @@
+PyYAML==6.0.2
+fastapi==0.139.2
+networkx==3.3
+numpy==1.26.4
+openai==2.46.0
+openpyxl==3.1.5
+pandas==2.2.2
+python-multipart==0.0.32
+rdkit==2024.3.3
+redis==5.0.8
+scikit-fingerprints==1.10.0
+scikit-learn==1.5.1
+scipy==1.13.1
+statsmodels==0.14.2
+torchdata==0.7.1
+tqdm==4.66.5
+uvicorn[standard]==0.51.0

@@ -1,0 +1,1 @@
+{"header":{"type":"esummary"},"result":{"uids":["123"],"123":{"uid":"123","accession":"GSE123","title":"Human liver disease versus healthy controls","taxon":"Homo sapiens","gdsType":"Expression profiling by high throughput sequencing","n_samples":12,"summary":"A case-control liver RNA-seq study.","overall_design":"Six cases and six controls.","suppFile":"CSV"}}}

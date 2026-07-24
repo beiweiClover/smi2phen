@@ -1,0 +1,28 @@
+schema_version: "1.0"
+redis_protocol_version: "1.0"
+queues: [cpu, gps, kg, netinfer]
+images:
+  unified: smi2phen:latest
+nodes:
+  create_run_workspace: {runner_module: internal.completed_workspace, queue: cpu, image: unified}
+  register_inputs: {runner_module: lipid_screening_agent.runners.input_prepare.register_inputs, queue: cpu, image: unified}
+  prepare_compound_library: {runner_module: lipid_screening_agent.runners.input_prepare.prepare_compound_library, queue: cpu, image: unified}
+  prepare_disease_genes: {runner_module: lipid_screening_agent.runners.input_prepare.prepare_disease_genes, queue: cpu, image: unified}
+  import_drug_targets: {runner_module: lipid_screening_agent.runners.input_prepare.import_drug_targets, queue: cpu, image: unified}
+  prepare_expression_inputs: {runner_module: lipid_screening_agent.runners.input_prepare.prepare_expression_inputs, queue: cpu, image: unified}
+  gps_predict_drug_profiles: {runner_module: lipid_screening_agent.runners.gps.predict_drug_profiles, queue: gps, image: unified}
+  gps_build_disease_signature: {runner_module: lipid_screening_agent.runners.gps.build_disease_signature, queue: gps, image: unified}
+  gps_score_compounds: {runner_module: lipid_screening_agent.runners.gps.score_compounds, queue: gps, image: unified}
+  netinfer_prepare_inputs: {runner_module: lipid_screening_agent.runners.netinfer.prepare_inputs, queue: netinfer, image: unified}
+  netinfer_predict_known: {runner_module: lipid_screening_agent.runners.netinfer.predict_known, queue: netinfer, image: unified}
+  netinfer_predict_batch: {runner_module: lipid_screening_agent.runners.netinfer.predict_batch, queue: netinfer, image: unified}
+  netinfer_merge_targets: {runner_module: lipid_screening_agent.runners.netinfer.merge_targets, queue: netinfer, image: unified}
+  proximity_prepare_network: {runner_module: lipid_screening_agent.runners.proximity.prepare_network, queue: cpu, image: unified}
+  proximity_score_compounds: {runner_module: lipid_screening_agent.runners.proximity.score_compounds, queue: cpu, image: unified}
+  kg_construct_graph: {runner_module: lipid_screening_agent.runners.kg.construct_graph, queue: kg, image: unified}
+  kg_prepare_training_data: {runner_module: lipid_screening_agent.runners.kg.prepare_training_data, queue: kg, image: unified}
+  kg_pretrain: {runner_module: lipid_screening_agent.runners.kg.pretrain, queue: kg, image: unified}
+  kg_finetune_seed: {runner_module: lipid_screening_agent.runners.kg.finetune_seed, queue: kg, image: unified}
+  kg_aggregate_seeds: {runner_module: lipid_screening_agent.runners.kg.aggregate_seeds, queue: kg, image: unified}
+  rank_candidates: {runner_module: lipid_screening_agent.runners.ranking.rank_candidates, queue: cpu, image: unified}
+  generate_run_report: {runner_module: lipid_screening_agent.runners.ranking.generate_run_report, queue: cpu, image: unified}

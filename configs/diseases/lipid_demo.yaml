@@ -1,0 +1,8 @@
+name: hepatic steatosis
+slug: hepatic_steatosis
+identifier: null
+custom_node_id: disease:custom:hepatic_steatosis
+species: human
+tissue: liver
+description: Human hepatic steatosis reference regression phenotype.
+source_tag: custom

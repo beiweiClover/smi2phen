@@ -1,0 +1,42 @@
+schema_version: "1.0"
+contract: human_disease_configuration
+
+disease:
+  required_fields: [name, slug, identifier, custom_node_id, species, tissue, description]
+  fields:
+    name: {type: string, non_empty: true}
+    slug:
+      type: string
+      canonical_form: lower_snake_ascii
+      pattern: "^[a-z0-9](?:[a-z0-9_]{0,62}[a-z0-9])?$"
+    identifier: {type: [string, "null"]}
+    custom_node_id:
+      type: string
+      pattern: "^disease:custom:[a-z0-9](?:[a-z0-9._-]{0,94}[a-z0-9])?$"
+      default_template: "disease:custom:{slug}"
+    species:
+      type: string
+      supported_values: [human]
+      aliases_normalized_to_human: [Homo sapiens, homo_sapiens, "9606"]
+      other_species_behavior: unsupported
+    tissue: {type: [string, "null"]}
+    description: {type: [string, "null"]}
+
+readiness:
+  core_required_inputs: [compound_library, disease_genes]
+  disease_genes_must_have_source: true
+  missing_disease_genes_behavior: blocked
+  missing_expression_behavior: skip_gps_and_use_core_mode
+  explicit_species_compatibility_checks:
+    - gene_mapping
+    - netinfer_target_space
+    - ppi
+    - kg_base
+    - gps_expression_space
+  module_status_values: [available, blocked, skipped, unsupported]
+
+boundaries:
+  arbitrary_human_disease_input_is_a_configuration_interface: true
+  successful_execution_for_every_disease_is_guaranteed: false
+  automatic_unsourced_disease_gene_generation: false
+  non_human_species: unsupported

@@ -1,0 +1,4 @@
+Compound ID,Canonical SMILES,name,source
+cmp-001,CCO,ethanol,fixture
+cmp-002,not-a-smiles,invalid example,fixture
+cmp-003,C,methane,fixture

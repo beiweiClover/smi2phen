@@ -1,0 +1,6 @@
+{
+  "BAD001": {
+    "smiles": "CCO",
+    "target_names": ["TP53"]
+  }
+}

@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smi2phen"
+version = "0.1.0"
+description = "Agent-assisted, workflow-led multi-perspective candidate drug screening"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.115,<1",
+    "openai>=2,<3",
+    "python-multipart>=0.0.9",
+    "redis>=5,<6",
+    "uvicorn[standard]>=0.30,<1",
+]
+worker = [
+    "redis>=5,<6",
+]
+dev = [
+    "httpx>=0.27,<1",
+    "pytest>=8,<9",
+    "ruff>=0.11,<1",
+]
+
+[project.scripts]
+lipid-register-inputs = "lipid_screening_agent.runners.input_prepare.register_inputs:main"
+lipid-prepare-compounds = "lipid_screening_agent.runners.input_prepare.prepare_compound_library:main"
+lipid-prepare-disease-genes = "lipid_screening_agent.runners.input_prepare.prepare_disease_genes:main"
+lipid-import-drug-targets = "lipid_screening_agent.runners.input_prepare.import_drug_targets:main"
+lipid-prepare-expression = "lipid_screening_agent.runners.input_prepare.prepare_expression_inputs:main"
+lipid-gps-predict-drug-profiles = "lipid_screening_agent.runners.gps.predict_drug_profiles:main"
+lipid-gps-build-disease-signature = "lipid_screening_agent.runners.gps.build_disease_signature:main"
+lipid-gps-score-compounds = "lipid_screening_agent.runners.gps.score_compounds:main"
+lipid-netinfer-prepare-inputs = "lipid_screening_agent.runners.netinfer.prepare_inputs:main"
+lipid-netinfer-predict-known = "lipid_screening_agent.runners.netinfer.predict_known:main"
+lipid-netinfer-predict-batch = "lipid_screening_agent.runners.netinfer.predict_batch:main"
+lipid-netinfer-merge-targets = "lipid_screening_agent.runners.netinfer.merge_targets:main"
+lipid-proximity-prepare-network = "lipid_screening_agent.runners.proximity.prepare_network:main"
+lipid-proximity-score-compounds = "lipid_screening_agent.runners.proximity.score_compounds:main"
+lipid-kg-construct-graph = "lipid_screening_agent.runners.kg.construct_graph:main"
+lipid-kg-prepare-training-data = "lipid_screening_agent.runners.kg.prepare_training_data:main"
+lipid-kg-pretrain = "lipid_screening_agent.runners.kg.pretrain:main"
+lipid-kg-finetune-seed = "lipid_screening_agent.runners.kg.finetune_seed:main"
+lipid-kg-aggregate-seeds = "lipid_screening_agent.runners.kg.aggregate_seeds:main"
+lipid-rank-candidates = "lipid_screening_agent.runners.ranking.rank_candidates:main"
+lipid-generate-run-report = "lipid_screening_agent.runners.ranking.generate_run_report:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [".runtime", ".local-resources"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]

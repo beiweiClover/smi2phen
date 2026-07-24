@@ -1,0 +1,173 @@
+schema_version: "1.0"
+contract: workflow_inputs
+path_root: run_workspace
+directories:
+  original: inputs/original
+  prepared: inputs/prepared
+
+rules:
+  user_files_are_immutable_after_registration: true
+  prepared_files_must_not_overwrite_originals: true
+  fixed_resources_are_config_references_not_run_inputs: true
+  legacy_generated_results_are_accepted_as_default_inputs: false
+  original_filenames_are_provenance_not_disease_identity: true
+  prepared_artifact_names_are_disease_agnostic: true
+
+inputs:
+  compound_library:
+    required: true
+    cardinality: one
+    source: user_or_explicit_fixture
+    suggested_filename: smiles.csv
+    media_type: text/csv
+    required_columns:
+      ID:
+        type: string
+        nullable: false
+        unique: true
+        role: compound_primary_key
+      SMILES:
+        type: string
+        nullable: false
+    allowed_additional_columns: true
+    preparation:
+      column_alias_matching: case_insensitive_alphanumeric_canonicalization
+      id_aliases: [ID, compound_id, drug_id, targetmol_id, molecule_id]
+      smiles_aliases: [SMILES, smile, canonical_smiles, smiles_standardized, standardized_smiles]
+      ambiguous_required_columns: fail
+      duplicate_id_policy: fail
+      normalized_artifact: compounds_normalized
+      skipped_artifact: invalid_smiles
+      minimum_valid_records: 1
+      canonical_columns: [ID, SMILES]
+      invalid_smiles_policy: skip_and_report
+
+  disease_genes:
+    required: true
+    cardinality: one
+    source: user_upload_or_user_approved_research
+    suggested_filename: disease_genes.tsv
+    accepted_shapes:
+      - single_column_without_header_symbol
+      - symbol_only_table
+      - entrez_id_only_table
+      - symbol_and_entrez_id_table
+    canonical_columns:
+      symbol:
+        type: string
+        nullable: false
+      entrez_id:
+        type: string
+        nullable: false
+        unique: true
+    preparation:
+      normalized_artifact: disease_genes_normalized
+      skipped_artifact: unmapped_genes
+      mapping_resource: resources.gps.human_gene_info
+      mapping_namespaces: [Symbol, Synonyms, GeneID]
+      mapping_case_sensitive: false
+      official_symbol_precedes_synonym: true
+      ambiguous_synonym_policy: skip_and_report
+      symbol_entrez_mismatch_policy: skip_and_report
+      output_symbol: official_symbol_from_mapping_resource
+      deduplicate_by: entrez_id
+      unmapped_policy: skip_and_report
+      minimum_valid_records: 1
+      missing_input_behavior: block_core_workflow_never_generate_unsourced_genes
+
+  drug_targets:
+    required_when: netinfer_deferred
+    cardinality: one
+    source: user_provided_or_validated_upstream_provider
+    suggested_filename: drug_targets.json
+    media_type: application/json
+    role: stable_target_provider_boundary
+    compound_ids_must_match: compounds_normalized
+    targets:
+      required_fields: [gene_symbol, uniprot_id, evidence]
+      evidence_values: [known, predicted]
+      predicted_required_fields: [prediction_rank]
+
+  target_mapping:
+    required_when: netinfer_deferred
+    cardinality: one
+    source: same_provenance_scope_as_drug_targets
+    suggested_filename: target_mapping.tsv
+    media_type: text/tab-separated-values
+    required_columns: [gene_symbol, entrez_id]
+    unique_by: gene_symbol
+
+  expression_pairs:
+    required: false
+    cardinality: zero_or_more_pairs
+    applicable_mode: enhanced
+    absence_behavior: skip_gps_branch
+    does_not_control_core_readiness: true
+    discovery_patterns:
+      - tpm: TPM_matrix.tsv
+        metadata: metadata.tsv
+      - tpm: "TPM_matrix_<suffix>.tsv"
+        metadata: "metadata_<suffix>.tsv"
+    filename_matching: case_sensitive_exact
+    tpm:
+      media_type: text/tab-separated-values
+      first_column:
+        role: GeneID
+        type: string
+      remaining_columns:
+        role: sample_id
+        values: numeric_tpm
+    metadata:
+      media_type: text/tab-separated-values
+      required_columns:
+        sample_id:
+          type: string
+          nullable: false
+          unique: true
+        group:
+          type: string
+          nullable: false
+          allowed_values: [control, disease]
+      required_group_set: [control, disease]
+      samples_must_exist_in_tpm_columns: true
+    preparation:
+      comparison_manifest_artifact: expression_comparisons_manifest
+      computes_differential_expression: false
+      orphan_pair_policy: fail
+      tpm_validation_scope: header_only
+      metadata_samples_relation_to_tpm: subset
+      input_directory: inputs/original
+
+  positive_drugs:
+    required: false
+    cardinality: zero_or_one
+    source: user_upload
+    suggested_filename: positive_drugs.tsv
+    media_type: text/tab-separated-values
+    absence_behavior: continue
+    required_columns:
+      input_type:
+        type: string
+        allowed_values: [library_id, base_drug_name, base_drug_id]
+      value:
+        type: string
+    allowed_additional_columns: true
+
+  disease_links:
+    required: false
+    cardinality: zero_or_one
+    source: user_upload
+    suggested_filename: disease_links.tsv
+    media_type: text/tab-separated-values
+    absence_behavior: continue
+    required_columns:
+      input_type:
+        type: string
+        allowed_values: [base_disease_id, base_disease_name]
+      value:
+        type: string
+    optional_columns:
+      node_name:
+        type: string
+        role: human_readable_review_label
+    allowed_additional_columns: true

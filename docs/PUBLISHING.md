@@ -1,22 +1,22 @@
 # Publishing runbook
 
 This runbook separates local release preparation from actions that require the repository owner's
-accounts. Replace every angle-bracket placeholder with a real value. Do not record a successful
-upload, digest, or clean-room result until the corresponding command has completed.
+accounts. The release target is `https://github.com/beiweiClover/smi2phen`, and the fixed container
+target is `ghcr.io/beiweiclover/smi2phen:v0.1.0`. Do not record a successful upload, digest, or
+clean-room result until the corresponding command has completed.
 
 ## Decisions required before a public release
 
-Record these values first:
+The following decisions are recorded:
 
-- GitHub owner and repository URL;
-- whether the repository will be public or private;
-- the software license selected by the copyright owner;
-- whether the verified GPS files will use their pinned official URLs or a Google Drive mirror;
-- the lower-case GHCR owner namespace.
+- public GitHub repository: `https://github.com/beiweiClover/smi2phen`;
+- project source license: MIT;
+- lower-case GHCR namespace: `ghcr.io/beiweiclover`;
+- the verified GPS files continue to use pinned official URLs unless a tested Google Drive mirror
+  is supplied.
 
-The current repository has no reviewed software license. Publishing without one does not grant
-other users permission to copy, modify, or redistribute the code. Add a license only after the
-copyright owner chooses it.
+The MIT license covers the smi2phen source code only. It does not override third-party resource
+licenses or grant permission to redistribute manual-only resources.
 
 ## 1. Local preflight
 
@@ -81,30 +81,31 @@ their exact provenance and redistribution rights are resolved.
 Set the fixed image in `.env.example` and the Compose fallback to:
 
 ```text
-ghcr.io/<lower-case-owner>/smi2phen:v0.1.0
+ghcr.io/beiweiclover/smi2phen:v0.1.0
 ```
 
 Replace repository placeholders in `README.md` with:
 
 ```text
-https://github.com/<owner>/smi2phen.git
+https://github.com/beiweiClover/smi2phen.git
 ```
 
 The default README command must use `v0.1.0`, not `latest`. `latest` may be maintained as a
 convenience alias.
 
-## 4. Create and push the first Git commit
+## 4. Push source and create the release tag
 
-Create the empty GitHub repository in the owner's account without auto-generating README, license,
-or `.gitignore`, then run:
+The GitHub initialization commit contains the MIT `LICENSE` and has been merged without overwriting
+either history. Confirm the configured remote, then push:
 
 ```bash
-git add --all
-git status --short
-git commit -m "Release smi2phen v0.1.0"
-git branch -M main
-git remote add origin https://github.com/<owner>/smi2phen.git
+git remote -v
 git push -u origin main
+```
+
+Create the tag only after the GHCR push and clean-room verification have passed:
+
+```bash
 git tag -a v0.1.0 -m "smi2phen v0.1.0"
 git push origin v0.1.0
 ```
@@ -126,14 +127,14 @@ files to the Docker context.
 
 ```bash
 docker build -f docker/Dockerfile.unified \
-  -t ghcr.io/<lower-case-owner>/smi2phen:v0.1.0 .
-docker image inspect ghcr.io/<lower-case-owner>/smi2phen:v0.1.0
-docker login ghcr.io -u <github-user>
-docker push ghcr.io/<lower-case-owner>/smi2phen:v0.1.0
-docker tag ghcr.io/<lower-case-owner>/smi2phen:v0.1.0 \
-  ghcr.io/<lower-case-owner>/smi2phen:latest
-docker push ghcr.io/<lower-case-owner>/smi2phen:latest
-docker buildx imagetools inspect ghcr.io/<lower-case-owner>/smi2phen:v0.1.0
+  -t ghcr.io/beiweiclover/smi2phen:v0.1.0 .
+docker image inspect ghcr.io/beiweiclover/smi2phen:v0.1.0
+docker login ghcr.io -u beiweiClover
+docker push ghcr.io/beiweiclover/smi2phen:v0.1.0
+docker tag ghcr.io/beiweiclover/smi2phen:v0.1.0 \
+  ghcr.io/beiweiclover/smi2phen:latest
+docker push ghcr.io/beiweiclover/smi2phen:latest
+docker buildx imagetools inspect ghcr.io/beiweiclover/smi2phen:v0.1.0
 ```
 
 Enter the package token only at Docker's password prompt. Do not paste it into a file, command
@@ -149,7 +150,7 @@ Use a new empty directory and a new Compose project name. Do not copy local imag
 caches, or volumes into it.
 
 ```bash
-git clone https://github.com/<owner>/smi2phen.git smi2phen-clean
+git clone https://github.com/beiweiClover/smi2phen.git smi2phen-clean
 cd smi2phen-clean
 git checkout v0.1.0
 cp .env.example .env

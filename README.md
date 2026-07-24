@@ -68,7 +68,7 @@ runtime, adequate disk/memory, and the external resources described below.
 The intended public-release flow is:
 
 ```bash
-git clone <GitHub repository URL>
+git clone https://github.com/beiweiClover/smi2phen.git
 cd smi2phen
 
 cp .env.example .env
@@ -83,9 +83,8 @@ docker compose up -d
 
 Then open `http://127.0.0.1:8000/`. The same address serves the API and Web application.
 
-The GitHub repository URL and GHCR owner are currently `needs_review`; no remote release has been
-claimed. Until the publisher replaces `SMI2PHEN_IMAGE` with
-`ghcr.io/<owner>/smi2phen:v0.1.0`, use the verified local build path:
+Compose is pinned to `ghcr.io/beiweiclover/smi2phen:v0.1.0`. Until that package has been uploaded
+and made public, use the verified local build path:
 
 ```bash
 cp .env.example .env
@@ -97,8 +96,7 @@ docker compose up -d
 curl http://127.0.0.1:8000/healthz
 ```
 
-The model
-API key is optional for direct Web/API workflow controls and is required only for model-assisted
+The model API key is optional for direct Web/API workflow controls and is required only for model-assisted
 chat. Keep credentials in an untracked `.env` or enter them per request in the Web interface.
 Never commit credentials.
 
@@ -192,13 +190,14 @@ test or container health check is not a successful full scientific reproduction.
 
 ## Citation
 
-Software citation metadata (authors, repository URL, release identifier, and archive DOI) is
-`needs_review`. Until a reviewed release exists, cite the project title, the exact version or commit,
-and the access date. Do not invent or infer a DOI.
+Repository: <https://github.com/beiweiClover/smi2phen>. The release tag and archive DOI remain
+`needs_review`. Until a tagged release exists, cite the project title, exact commit, repository URL,
+and access date. Do not invent or infer a DOI.
 
 ## License and resource rights
 
-The software license and third-party resource redistribution terms are `needs_review`. Public
-upload is not legally ready until those decisions are recorded, even if the technical checks pass.
+The smi2phen source code is released under the MIT License; see [`LICENSE`](LICENSE). This license
+does not override the separate licenses or redistribution restrictions of third-party scientific
+resources. Consult the per-resource fields in [`resources/manifest.json`](resources/manifest.json).
 The account-owner steps for GitHub, an optional Google Drive GPS mirror, GHCR, and clean-room
 verification are documented in [docs/PUBLISHING.md](docs/PUBLISHING.md).

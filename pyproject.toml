@@ -7,6 +7,7 @@ name = "smi2phen"
 version = "0.1.0"
 description = "Agent-assisted, workflow-led multi-perspective candidate drug screening"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
     "PyYAML>=6.0",

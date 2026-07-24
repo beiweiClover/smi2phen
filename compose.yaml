@@ -20,7 +20,7 @@ x-volumes: &volumes
   - ${SMI2PHEN_RESOURCE_DIR:-./.local-resources}:/resources:ro
 
 x-unified: &unified
-  image: ${SMI2PHEN_IMAGE:-smi2phen:latest}
+  image: ${SMI2PHEN_IMAGE:-ghcr.io/beiweiclover/smi2phen:v0.1.0}
   build:
     context: .
     dockerfile: docker/Dockerfile.unified

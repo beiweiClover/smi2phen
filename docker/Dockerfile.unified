@@ -34,7 +34,7 @@ RUN python -m pip install -r /tmp/requirements.txt \
        --find-links https://data.dgl.ai/wheels/torch-2.1/cu121/repo.html \
        "dgl==${DGL_VERSION}")
 
-COPY pyproject.toml README.md compose.yaml ./
+COPY pyproject.toml README.md LICENSE compose.yaml ./
 COPY src ./src
 COPY configs ./configs
 COPY contracts ./contracts

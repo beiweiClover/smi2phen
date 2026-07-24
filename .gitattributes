@@ -1,5 +1,9 @@
 * text=auto
 .gitattributes text eol=lf
+.dockerignore text eol=lf
+.env.example text eol=lf
+.gitignore text eol=lf
+LICENSE text eol=lf
 
 *.py text eol=lf
 *.md text eol=lf

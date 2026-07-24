@@ -13,7 +13,7 @@ never means “passed.”
 - Python compilation: **passed** for `src`, `scripts`, and `tests`.
 - Ruff 0.15.22: **passed**.
 - `docker compose config --quiet` with Compose 5.3.0: **passed**.
-- Git candidate audit: 190 files, approximately 1.5 MB total, largest file 79,585 bytes; **no ordinary
+- Git candidate audit: 191 files, approximately 1.5 MB total, largest file 79,585 bytes; **no ordinary
   file over 100 MB**.
 - Forbidden state/filename scan: **no candidate database, runtime state, log, cache, private-key
   file, real `.env`, or credential file**.
@@ -37,8 +37,9 @@ never means “passed.”
 - Downloader network test: in a new empty ignored directory, **9/9 GPS files downloaded and
   verified**. The command returned non-zero because the 9 manual-only required resources were
   intentionally absent; each produced an acquisition/review prompt.
-- Current local image build: **passed** as `smi2phen:release-prep-v0.1.0`, approximately 4.24 GB.
-  No image was pushed.
+- Current local image build: **passed** as
+  `ghcr.io/beiweiclover/smi2phen:v0.1.0`, approximately 4.24 GB. The MIT `LICENSE` is present in
+  the image. No image was pushed.
 - Isolated Compose start: **Redis, API, and Worker were healthy**; the Web root returned HTTP 200,
   `/healthz` returned `status=ok`, Worker heartbeat keys were present, and the state database
   initially contained zero sessions.
@@ -52,9 +53,12 @@ never means “passed.”
   present, and the static example remained 81 lines with SHA-256
   `098f96829d5de39ee5a30a0615c10139c0b437cd4ecb0466564473db8e58485d`.
   This is a local source-integrity check, not a clone-from-GitHub result.
-- GitHub push, Google Drive mirror upload, GHCR push/digest, and clone-from-remote clean-room
-  validation are **not run** because no repository URL/owner, selected software license, or
-  authenticated publication target is available.
+- The public target `https://github.com/beiweiClover/smi2phen`, MIT source license, and
+  `ghcr.io/beiweiclover/smi2phen:v0.1.0` image name are recorded. A normal GitHub source push and a
+  GHCR image push were attempted; both were **rejected by authentication** because the workstation
+  had no valid GitHub/GHCR login. No force push was used and no remote source commit or image digest
+  was created. Google Drive mirror upload and clone-from-remote clean-room validation remain
+  **not run**.
 
 ## Level 2 — completed with a reduced smoke configuration
 

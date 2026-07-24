@@ -13,7 +13,7 @@ never means “passed.”
 - Python compilation: **passed** for `src`, `scripts`, and `tests`.
 - Ruff 0.15.22: **passed**.
 - `docker compose config --quiet` with Compose 5.3.0: **passed**.
-- Git candidate audit: 189 files, approximately 1.5 MB total, largest file 79,585 bytes; **no ordinary
+- Git candidate audit: 190 files, approximately 1.5 MB total, largest file 79,585 bytes; **no ordinary
   file over 100 MB**.
 - Forbidden state/filename scan: **no candidate database, runtime state, log, cache, private-key
   file, real `.env`, or credential file**.

@@ -48,14 +48,15 @@ If a mirror is required:
 3. Include the Apache-2.0 license and attribution to `Bin-Chen-Lab/GPS`, commit
    `c11668aaa08a68ec3e2e9d93d79ca4dd1956ba98`.
 4. Set each Drive file to “Anyone with the link” and viewer-only.
-5. For each file, record the Drive file ID and construct a public download URL such as:
-
-   ```text
-   https://drive.usercontent.google.com/download?id=<FILE_ID>&export=download&confirm=t
-   ```
-
-6. Replace that resource's `download_url` only after testing the URL in a logged-out browser or
-   clean shell.
+5. Record the Drive file ID, revision, and sharing link. For script downloads, use only a raw
+   download URL returned by Drive (for example, the file's `webContentLink`) that works without an
+   account. Do not assume that a manually constructed URL is a stable public API. Google documents
+   browser downloads through `webContentLink`; its `files.get?alt=media` API flow normally uses an
+   authorization token:
+   <https://developers.google.com/workspace/drive/api/guides/manage-downloads>.
+6. Replace that resource's `download_url` only after the anonymous URL returns the resource bytes,
+   not an HTML login/permission page, in a logged-out browser or clean shell. If no anonymous raw
+   URL is available, keep the pinned official GPS URL and document Drive as a manual mirror.
 7. Download into a new empty resource root and verify every file:
 
    ```bash

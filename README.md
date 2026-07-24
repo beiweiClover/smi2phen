@@ -171,11 +171,7 @@ docker compose down
 ## 示例结果
 
 [`examples/demo_result/final_candidates_no_toxicity.tsv`](examples/demo_result/final_candidates_no_toxicity.tsv)
-是一个静态输出格式示例，包含 80 条候选记录。该文件不是本版本 Docker 发布过程中重新运行
-得到的结果，也不包含原始会话、中间模型或完整 artifact。
-
-文件名中的 `no_toxicity` 表示该次排序未纳入毒性评分，不代表已经完成毒性过滤或安全性评价。
-详见 [`examples/demo_result/README.md`](examples/demo_result/README.md)。
+是一个静态输出格式示例，包含 80 条候选记录。
 
 ## 科研资源与复现
 
